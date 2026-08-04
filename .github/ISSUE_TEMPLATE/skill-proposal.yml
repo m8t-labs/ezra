@@ -1,0 +1,50 @@
+name: Propose a skill or a piece of knowledge
+description: Something Ezra should know how to do, or should know.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        You do not need to write the file — describing it well is the hard part, and we can
+        take it from there. If you would rather write it, [CONTRIBUTING.md](https://github.com/m8t-labs/ezra/blob/main/CONTRIBUTING.md)
+        has the shape.
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of thing is this?
+      options:
+        - A skill — a repeatable play Ezra should be able to run
+        - Knowledge — a fact or gotcha that should change how Ezra answers
+        - A reference — background Ezra should consult mid-task
+    validations:
+      required: true
+
+  - type: textarea
+    id: when
+    attributes:
+      label: When should Ezra reach for this?
+      description: The situation, in the words someone would actually use.
+      placeholder: When a quota increase has been rejected once already and the founder needs to escalate.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: What should Ezra do?
+      description: The steps in order, as far as you know them. Rough is fine.
+    validations:
+      required: true
+
+  - type: textarea
+    id: never
+    attributes:
+      label: What should Ezra never do here?
+      description: The trap, the destructive shortcut, the thing that looks right and isn't.
+
+  - type: textarea
+    id: source
+    attributes:
+      label: How do you know?
+      description: A Microsoft Learn link, a support case outcome, or "I hit this last week".

@@ -1,0 +1,21 @@
+blank_issues_enabled: false
+
+# These destinations are the same routing table as SUPPORT.md, rendered a second time.
+# `ci/tests/test_routing_agrees.py` fails if the two drift apart.
+#
+# Every entry names the Ezra PROJECT explicitly, because a fork inherits this file and
+# GitHub cannot template it. In your own fork these read as what they are — pointers
+# upstream — rather than as your project's support channels. CONTRIBUTING.md tells fork
+# owners to replace them.
+contact_links:
+  - name: Ask the Ezra project a question
+    url: https://github.com/m8t-labs/ezra/discussions
+    about: Discussions on the canonical Ezra repository — questions, half-formed ideas, anything not yet a proposal.
+
+  - name: Running Ezra, installing it, or the platform underneath
+    url: https://m8t.run
+    about: This repository is Ezra's knowledge. Questions about deploying or operating it start at m8t.run.
+
+  - name: Report a security issue in the Ezra project
+    url: https://github.com/m8t-labs/ezra/security/advisories/new
+    about: Private reporting on the canonical repository. Never open a public issue for a vulnerability.

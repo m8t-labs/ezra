@@ -1,0 +1,3 @@
+# Running the checks locally leaves these behind.
+__pycache__/
+.pytest_cache/

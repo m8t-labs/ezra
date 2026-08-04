@@ -1,0 +1,44 @@
+name: Ezra got something wrong
+description: A wrong answer, a stale fact, or advice that did not survive contact with Azure.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Wrong answers are the most useful thing you can report — they usually point at one
+        fixable file in this repository.
+
+        **Please redact before posting:** subscription and tenant IDs, resource names,
+        email addresses, and anything from a real support case. A placeholder reads just
+        as well.
+
+  - type: textarea
+    id: asked
+    attributes:
+      label: What did you ask?
+      description: The question, roughly as you put it.
+    validations:
+      required: true
+
+  - type: textarea
+    id: answered
+    attributes:
+      label: What did Ezra say?
+      description: Paste the answer, or the part of it that was wrong.
+    validations:
+      required: true
+
+  - type: textarea
+    id: correct
+    attributes:
+      label: What is actually true?
+      description: A Microsoft Learn link is ideal, but "the portal does X now" is useful too.
+    validations:
+      required: true
+
+  - type: input
+    id: where
+    attributes:
+      label: Which Ezra?
+      description: m8t.run, or your own deployment — and roughly when.
+      placeholder: m8t.run, this morning

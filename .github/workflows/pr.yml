@@ -1,0 +1,42 @@
+name: PR
+
+# Pull requests targeting the default branch only.
+#
+# Deliberately NOT `on: push`. The hosted Ezra's librarian commits what it learns to a
+# non-default branch of this repository; gating those commits would break the learning
+# loop, and running this workflow on them would burn minutes for nothing. A promotion
+# pull request from that branch to `main` targets the default branch, so it runs these
+# gates exactly like an outside contributor's pull request does — which is the point.
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: '3.12'
+
+      - name: Install the checker's dependencies
+        run: python -m pip install --quiet --disable-pip-version-check -r ci/requirements.txt
+
+      # The checker's own tests run FIRST. If a change breaks a rule, that is the finding
+      # worth seeing — a gate nobody tests is prose.
+      - name: Test the checker
+        run: python -m pytest ci/tests -q
+
+      - name: Check the repository
+        run: python ci/check.py
