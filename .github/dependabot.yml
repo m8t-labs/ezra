@@ -1,0 +1,13 @@
+version: 2
+
+# Actions are pinned to immutable commit SHAs, which is the right call for a public repo's
+# required check — and it means they go stale silently. Dependabot is what makes staleness
+# arrive as a pull request the maintainers can see, rather than as a version nobody
+# revisits. Monthly: this repository pins two actions, not thirty.
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: ci

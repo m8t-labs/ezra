@@ -1,0 +1,16 @@
+blank_issues_enabled: false
+
+# These destinations are the same routing table as SUPPORT.md, rendered a second time.
+# `ci/tests/test_routing_agrees.py` fails if the two drift apart.
+contact_links:
+  - name: Ask a question or talk through an idea
+    url: https://github.com/m8t-labs/ezra/discussions
+    about: Discussions is the place for questions, half-formed ideas, and anything not yet a proposal.
+
+  - name: Running Ezra, installing it, or the platform underneath
+    url: https://m8t.run
+    about: This repository is Ezra's knowledge. Questions about deploying or operating it start at m8t.run.
+
+  - name: Report a security issue
+    url: https://github.com/m8t-labs/ezra/security/advisories/new
+    about: Please report vulnerabilities and leaked secrets privately, never as a public issue.

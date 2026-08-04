@@ -27,7 +27,7 @@ pull request.
 
 ## Running Ezra
 
-Ezra runs on [m8t](https://github.com/m8t-labs/m8t), which deploys into **your own Azure
+Ezra runs on [m8t](https://m8t.run), which deploys into **your own Azure
 subscription** — your tenant, your data, your bill, no middleman holding your credentials.
 
 ```
@@ -51,6 +51,9 @@ An agent is only as good as what it knows, and everything it knows is text in th
 
 If Ezra got something wrong for you, the correction belongs here. That is the single most
 useful pull request this repo can receive.
+
+[CONTRIBUTING.md](CONTRIBUTING.md) has the shape of a good one, and
+[`python ci/check.py`](ci/README.md) runs the same checks CI does in about a second.
 
 ## License
 

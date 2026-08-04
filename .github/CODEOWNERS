@@ -1,0 +1,3 @@
+# Advisory, not merge-gating: `main` requires a pull request and a green check, not a
+# code-owner approval. This exists so review requests reach the right people by default.
+* @orkeren21 @ilanbm

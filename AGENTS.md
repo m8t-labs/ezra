@@ -105,9 +105,9 @@ Direct commits to `main`. The "mess" is contained by the `inbox/<date>/` folder 
 
 ## The librarian
 
-The **librarian** is a nightly GitHub Action (`.github/workflows/librarian.yml`) that runs at 04:00 UTC — at least two hours after the dreamer's nightly window. It is split into two sequential jobs so no single job holds both repo-write and OIDC-mint credentials (per-job credential split):
+The **librarian** is a nightly GitHub Action, scheduled for 04:00 UTC — at least two hours after the dreamer's nightly window. It is split into two sequential jobs so no single job holds both repo-write and OIDC-mint credentials (per-job credential split):
 
 - **janitor** (repo `contents: write`, no id-token): reconciles indexes; ages content (inbox 14d → stale 30d → archive 90d on `updated`, `pinned` exempt, archive ≠ delete); archives eligible artifacts; applies the index-line style doctrine to worker/dream-origin entries; flags do-not-capture violations and duplicates; measures brain-health metrics.
 - **codify** (id-token `write`, no contents-write): codifies `inbox/` skill-seeds into gated skill-promotion PRs; uses OIDC to mint its credentials. Runs after `janitor` completes.
 
-Until the operator publishes `m8t-labs/brain-librarian-action` and replaces the `<PINNED_SHA>` placeholder in the workflow file with an immutable commit SHA, the workflow will not execute. The `skills/` folder may be hand-seeded in the interim; the worker drafts `skill-seed` candidates into `inbox/` as usual.
+**This repository ships no librarian workflow yet.** It arrives once `m8t-labs/brain-librarian-action` is published and can be pinned to an immutable commit SHA; until then the two jobs above describe the intended design, not something running here. The `skills/` folder is hand-seeded in the interim, and the worker drafts `skill-seed` candidates into `inbox/` as usual.
