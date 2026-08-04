@@ -58,3 +58,5 @@ useful pull request this repo can receive.
 ## License
 
 MIT — see [LICENSE](LICENSE) and [NOTICE](NOTICE).
+
+see `memory/does-not-exist.md`

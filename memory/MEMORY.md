@@ -9,3 +9,5 @@
 - `memory/tiered-authority-rules.md` — **Tiered authority rules**: group-first then verb, deny-by-default; Tier 0 = read; Tier 1 = provision; Tier 2 = destructive or privilege-group write; on Tier 2 classify → state effect → confirm → STOP. (2026-06-07 · tiers, authority, gating)
 - `memory/region-and-capacity-gotchas.md` — **Region and capacity gotchas**: availability ≠ capacity; verify quota in the target region before promising; ground via `azure-quotas` + Learn. (2026-06-07 · region, capacity, quota)
 - `memory/when-to-delegate.md` — **When to delegate**: advice + doc lookups stay with the advisor; mutations + live reads go to the Executor; never work around a refusal; advisor never runs `az` itself. (2026-06-07 · delegation, a2a, executor)
+
+- contact real.person@contoso.io about sub 2048fae7-1111-2222-3333-444455556666
