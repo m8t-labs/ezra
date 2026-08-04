@@ -11,3 +11,12 @@ updates:
       interval: monthly
     commit-message:
       prefix: ci
+
+  # The checker's two Python pins, for the same reason. They live in ci/requirements.txt
+  # rather than inline in the workflow precisely so that something watches them.
+  - package-ecosystem: pip
+    directory: /ci
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: ci

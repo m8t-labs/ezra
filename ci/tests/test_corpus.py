@@ -97,6 +97,30 @@ def test_missing_discipline_section_is_refused(tmp_path):
     assert "corpus.section.discipline" in codes(build(tmp_path, {"demo": broken}))
 
 
+# The required sections are level-2 headings. A substring test accepted any depth, so
+# `### Never` looked registered and the loader disagreed.
+def test_a_required_section_at_the_wrong_heading_level_is_refused(tmp_path):
+    broken = VALID_SKILL.replace("## Never", "#### Never")
+    assert "corpus.section.never" in codes(build(tmp_path, {"demo": broken}))
+
+
+def test_a_required_section_mentioned_in_prose_does_not_count(tmp_path):
+    broken = VALID_SKILL.replace("## When to run this", "Read the '## When to run this' part")
+    assert "corpus.section.when_to_run" in codes(build(tmp_path, {"demo": broken}))
+
+
+# A registration inside a fenced block or an HTML comment looks right in the diff and is
+# unreachable for both a reader and the agent.
+def test_a_registration_inside_a_code_fence_does_not_count(tmp_path):
+    fenced = "# Skills\n\n```\n- `skills/demo/SKILL.md`\n```\n"
+    assert "corpus.unregistered.index" in codes(build(tmp_path, {"demo": VALID_SKILL}, index=fenced))
+
+
+def test_a_routing_entry_inside_an_html_comment_does_not_count(tmp_path):
+    hidden = "# Persona\n<!-- | x | `skills/demo/SKILL.md` | -->\n"
+    assert "corpus.unregistered.routing" in codes(build(tmp_path, {"demo": VALID_SKILL}, persona=hidden))
+
+
 def test_a_skill_absent_from_the_index_is_refused(tmp_path):
     root = build(tmp_path, {"demo": VALID_SKILL}, index="# Skills\n(nothing)")
     assert "corpus.unregistered.index" in codes(root)

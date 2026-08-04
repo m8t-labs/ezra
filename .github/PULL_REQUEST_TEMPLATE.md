@@ -13,7 +13,8 @@ looking for, written down so you don't have to guess.
 
 ---
 
-Before requesting review, `python ci/check.py` passes locally. CI runs the same thing:
+Before requesting review, `python -m pytest ci/tests` and `python ci/check.py` both pass
+locally. CI runs those two, in that order:
 
 - [ ] A new skill has its frontmatter, its three sections, and a line in both
       `skills/_index.md` and the persona's routing table

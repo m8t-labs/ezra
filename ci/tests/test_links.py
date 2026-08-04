@@ -118,3 +118,54 @@ def test_github_templates_are_scanned(tmp_path):
 def test_anchor_on_a_real_file_is_clean(tmp_path):
     root = build(tmp_path, {"a.md": "[x](memory/here.md#section)\n", "memory/here.md": "x\n"})
     assert check_links(root) == []
+
+
+# ── an explicit link to a root-level file IS a path ────────────────────────────
+# The bare-basename skip is right for prose ("each folder carries an `_index.md`") and
+# wrong for a written link. Without this distinction every cross-link between the OSS
+# health files — CONTRIBUTING to SECURITY, README to LICENSE — was unchecked.
+def test_a_broken_link_to_a_root_level_file_is_caught(tmp_path):
+    root = build(tmp_path, {"a.md": "[conduct](CODE_OF_CONDCT.md)\n"})
+    assert targets(root) == {"CODE_OF_CONDCT.md"}
+
+
+def test_a_working_link_to_a_root_level_file_is_clean(tmp_path):
+    root = build(tmp_path, {"a.md": "[conduct](CODE_OF_CONDUCT.md)\n", "CODE_OF_CONDUCT.md": "x\n"})
+    assert check_links(root) == []
+
+
+def test_a_broken_reference_definition_is_caught(tmp_path):
+    """Uses a root-level basename deliberately. A target like `memory/gone.md` is ALSO
+    matched by the bare-path convention, so it would keep being caught if the
+    reference-definition form were dropped — a test that cannot fail for its own reason."""
+    root = build(tmp_path, {"a.md": "see [it][x]\n\n[x]: CODE_OF_CONDCT.md\n"})
+    assert targets(root) == {"CODE_OF_CONDCT.md"}
+
+
+def test_a_bare_basename_in_prose_is_still_skipped(tmp_path):
+    root = build(tmp_path, {"a.md": "each folder carries an `_index.md`\n"})
+    assert check_links(root) == []
+
+
+# ── a stray backtick must not blank the rest of the document ───────────────────
+# With DOTALL on the code-span pattern, one unpaired backtick paired with the next one
+# anywhere later in the file, blanking every link between them and reporting nothing.
+def test_an_unbalanced_backtick_does_not_hide_later_links(tmp_path):
+    root = build(tmp_path, {
+        "a.md": "Use the ` character carefully.\n\nSee [broken](memory/gone.md) "
+                "and `skills/also-gone/SKILL.md`.\n",
+    })
+    assert targets(root) == {"memory/gone.md", "skills/also-gone/SKILL.md"}
+
+
+# ── the same answer on every platform ──────────────────────────────────────────
+# Resolving through the filesystem made this pass on a case-insensitive Mac and fail on the
+# Linux runner, so "run the same checks CI runs" was not true.
+def test_a_wrong_case_target_is_a_finding(tmp_path):
+    root = build(tmp_path, {"a.md": "read `memory/Here.md`\n", "memory/here.md": "x\n"})
+    assert targets(root) == {"memory/Here.md"}
+
+
+def test_a_target_escaping_the_repository_is_a_finding(tmp_path):
+    root = build(tmp_path, {"skills/x/SKILL.md": "[o](../../../../etc/passwd)\n"})
+    assert targets(root) == {"../../../../etc/passwd"}

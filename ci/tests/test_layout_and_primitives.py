@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ci.rules.layout import check_layout
-from ci.rules.primitives import check_primitives
+import pytest
+
+from ci.rules.layout import REQUIRED_FILES, check_layout
+from ci.rules.primitives import CONTRACTS, check_primitives
 
 HANDOFF = "<m8t:advisor_handoff>\nattempted blocked package recipient next_action\n"
 NOTIFY = ("<m8t:notify_advisor>\nto from_label subject body attachments mode\n"
@@ -34,16 +36,37 @@ def test_a_complete_layout_passes(tmp_path):
     assert layout_codes(full(tmp_path)) == set()
 
 
-def test_a_missing_brain_yaml_is_refused(tmp_path):
+def test_every_wire_contract_field_is_asserted_somewhere(tmp_path):
+    """Parametrised coverage's counterpart for `primitives`: dropping a field name from
+    `CONTRACTS` must not be invisible. Each field is checked by removing it from an
+    otherwise complete fixture."""
+    for rel, marker, fields in CONTRACTS:
+        for field in fields:
+            refs = tmp_path / "references"
+            refs.mkdir(parents=True, exist_ok=True)
+            (refs / "advisor-handoff.md").write_text(HANDOFF, encoding="utf-8")
+            (refs / "notify-advisor-contract.md").write_text(NOTIFY, encoding="utf-8")
+            target = refs / Path(rel).name
+            target.write_text(target.read_text(encoding="utf-8").replace(field, ""), encoding="utf-8")
+            codes = {f.code for f in check_primitives(tmp_path)}
+            assert codes, f"removing '{field}' from {rel} produced no finding"
+
+
+@pytest.mark.parametrize("rel", [rel for rel, _ in REQUIRED_FILES])
+def test_every_required_file_has_a_red_case(tmp_path, rel):
     root = full(tmp_path)
-    (root / ".m8t" / "brain.yaml").unlink()
+    (root / rel).unlink()
     assert layout_codes(root) == {"layout.missing"}
 
 
-def test_a_missing_license_is_refused(tmp_path):
-    root = full(tmp_path)
-    (root / "LICENSE").unlink()
-    assert layout_codes(root) == {"layout.missing"}
+# The test above parametrises over REQUIRED_FILES, so deleting an entry also deletes its
+# own case — the list shrinks and the suite stays green. This names the set independently,
+# which is the only way a removal can fail a test.
+def test_the_required_set_is_what_the_agent_repo_contract_says():
+    assert {rel for rel, _ in REQUIRED_FILES} == {
+        ".m8t/brain.yaml", "memory/MEMORY.md", "skills/_index.md",
+        "references/_index.md", "AGENTS.md", "README.md", "LICENSE",
+    }
 
 
 def test_a_missing_brain_space_directory_is_refused(tmp_path):

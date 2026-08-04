@@ -14,7 +14,13 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
-EXCLUDED_DIRS = frozenset({"ci", ".git", ".pytest_cache", "__pycache__", ".venv"})
+EXCLUDED_ROOTS = frozenset({"ci"})
+"""Excluded only at the repository root. `ci` is a real word — a skill about continuous
+integration would live at `skills/ci/SKILL.md`, and excluding it at any depth would silently
+drop that file from every sweep."""
+
+EXCLUDED_ANYWHERE = frozenset({".git", ".pytest_cache", "__pycache__", ".venv"})
+"""Tool droppings, which can appear at any depth and are never content."""
 
 MARKDOWN = (".md",)
 TEXT = (".md", ".yml", ".yaml", ".json", ".txt")
@@ -36,13 +42,25 @@ def _walked(root: Path) -> list[str]:
     return sorted(str(p.relative_to(root).as_posix()) for p in root.rglob("*") if p.is_file())
 
 
-def all_files(root: Path) -> list[str]:
-    """Every candidate path, repo-relative, POSIX separators, `ci/` excluded."""
+def _included(rel: str) -> bool:
+    parts = rel.split("/")
+    return parts[0] not in EXCLUDED_ROOTS and not EXCLUDED_ANYWHERE.intersection(parts[:-1])
+
+
+def every_path(root: Path) -> list[str]:
+    """Everything in the repository except tool droppings — INCLUDING `ci/`.
+
+    Link resolution needs this: `ci/` is not scanned, but content legitimately links to
+    `ci/README.md`, and a link checker that cannot see a file reports it as broken."""
     paths = _tracked(root)
     if paths is None:
         paths = _walked(root)
-    return sorted(p for p in paths if not EXCLUDED_DIRS.intersection(p.split("/")[:-1] or [""])
-                  and p.split("/")[0] not in EXCLUDED_DIRS)
+    return sorted(p for p in paths if not EXCLUDED_ANYWHERE.intersection(p.split("/")))
+
+
+def all_files(root: Path) -> list[str]:
+    """Every candidate path the rules SCAN, repo-relative, POSIX separators."""
+    return [p for p in every_path(root) if _included(p)]
 
 
 def _is_text(rel: str) -> bool:

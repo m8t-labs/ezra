@@ -15,28 +15,32 @@ content forever is a rule people learn to delete):
 * **RFC 2606 example domains.** Content that teaches email or ACS setup uses
   `example.com` legitimately.
 
-`ci/` is excluded from the sweep. A checker's fixtures necessarily contain the strings it
-hunts for — the precedent list below would match its own source — so scanning itself would
-be permanently red.
+`ci/` is excluded from the sweep, because a checker's fixtures contain examples of what it
+hunts for and scanning itself would be permanently red. That exclusion is also why the
+named-entity list is stored as digests in `entities.py` rather than as text: a rule the
+sweep cannot see must not be the one place its own contraband is written down.
 """
 from __future__ import annotations
 
 import re
 
 from .contracts import Finding
+from .entities import find_named_entity
 
 # ── what must not appear ───────────────────────────────────────────────────────
 
 # Matched against LOWERCASED text; keep the patterns lowercase.
+#
+# Only SHAPES live here. Named third parties and internal tool names are matched by digest
+# in `entities.py` — writing them out would publish, in a public repository, exactly the
+# list of associations the rule exists to prevent.
 SCRUB = [
-    ("mailbox", re.compile(r"[\w.+-]+@microsoft\.com"), "internal Microsoft mailbox"),
+    # Any microsoft.com mailbox, including subdomains (corp., ntdev., …). The email rule
+    # below exempts this whole domain on the grounds that this rule owns it, so the two
+    # must cover the same set or addresses fall between them.
+    ("mailbox", re.compile(r"[\w.+-]+@(?:[\w-]+\.)*microsoft\.com"), "internal Microsoft mailbox"),
     ("internal_host", re.compile(r"\b[\w.-]*\.msft\.net\b|loop\.cloud\.microsoft|loop\.microsoft\.com"),
      "internal Microsoft host"),
-    ("precedent", re.compile(r"august ai|pay-i|scispot"), "named customer precedent"),
-    ("internal_tool", re.compile(r"startups-crm-lookup|mfs-ai-analytics|powerbi|\bpbi\b"),
-     "internal Microsoft tool"),
-    ("internal_system", re.compile(r"\bonevet\b"), "internal Microsoft system"),
-    ("loop_wiki_phrase", re.compile(r"startup success enablement hub"), "internal wiki page"),
 ]
 
 # The Microsoft "Loop" wiki is a capitalized proper noun, so it is matched case-sensitively
@@ -64,19 +68,33 @@ DESTRUCTIVE = [
 # single most common phrasing of the attack — "ignore all previous instructions" — because
 # it allows exactly one word between the verb and the noun. Widened to a short word gap, and
 # `disregard` added. False positives in Azure prose are essentially nil; a miss is expensive.
+# A TRIPWIRE, not a boundary. These catch the common phrasings and careless copy-paste;
+# they do not stop anyone who is trying. Content is defended by the agent's own rules and
+# by review, not by this list. SECURITY.md says so out loud, because a reader who mistakes
+# it for a boundary will trust content it passed.
 INJECTION = [
-    r"\b(?:ignore|disregard)\s+(?:\w+\s+){0,3}instructions\b",
+    r"\b(?:ignore|disregard|forget)\s+(?:\w+\s+){0,6}(?:instructions|prompt|rules)\b",
+    r"\b(?:previous|prior|above|earlier|preceding)\s+(?:\w+\s+){0,3}instructions\b",
     r"exfiltrat",
     r"disable .*(safety|guard|check)",
+    r"\b(?:developer|god|dan)\s+mode\b",
+    r"\byour new (?:system )?prompt\b",
 ]
 
 SECRETS = [
+    # Token prefixes are case-SIGNIFICANT (`GHP_` is not a token); the descriptive
+    # key/value forms below are not, so those carry re.I.
     ("github_token", re.compile(r"\bgh[pousr]_[A-Za-z0-9]{20,}\b|\bgithub_pat_[A-Za-z0-9_]{20,}"),
      "a GitHub token"),
-    ("api_key", re.compile(r"\bsk-[A-Za-z0-9]{20,}\b|\bxox[baprs]-[A-Za-z0-9-]{10,}"), "an API key"),
-    ("connection_string", re.compile(r"AccountKey=|SharedAccessSignature=|Password=[^\s<>{]"),
+    # Every current model-provider key inserts a hyphenated segment before the random part
+    # (`sk-proj-…`, `sk-ant-api03-…`), so a pattern requiring alphanumerics straight after
+    # `sk-` matches only the retired format.
+    ("api_key", re.compile(r"\bsk-(?:[A-Za-z0-9]+-)*[A-Za-z0-9]{20,}\b"
+                           r"|\bxox[baprs]-[A-Za-z0-9-]{10,}"
+                           r"|\bAKIA[0-9A-Z]{16}\b"), "an API key"),
+    ("connection_string", re.compile(r"AccountKey=|SharedAccessSignature=|Password=[^\s<>{]", re.I),
      "a connection string"),
-    ("private_key", re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----"), "a private key"),
+    ("private_key", re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----", re.I), "a private key"),
 ]
 
 # RFC 2606 reserves these for documentation. See the module docstring.
@@ -89,7 +107,9 @@ _EMAIL_RE = re.compile(r"\b[\w.+-]+@([\w-]+(?:\.[\w-]+)+)\b")
 _GUID_RE = re.compile(r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b", re.I)
 
 _WORK_ITEM_RE = re.compile(r"\bW-\d{6,}\b")
-_SECTION_REF_RE = re.compile(r"§")
+# Narrowed to a numbered reference. A bare `§` is legitimate in legal or EU-regulatory
+# prose a contributor might reasonably add.
+_SECTION_REF_RE = re.compile(r"§\s*\d")
 
 # Content the agent actually reads as instructions: the consumed set, plus the operating
 # doctrine. The safety rules — destructive commands and prompt-injection markers — exist to
@@ -149,6 +169,14 @@ def scan_text(text: str, locus: str, ingested: bool = True) -> list[Finding]:
         m = rx.search(low)
         if m:
             add(f"hygiene.scrub.{name}", f"{label} present: remove it before this is public", m.start())
+
+    # The message names the class and the line, never the match — the contributor knows
+    # what they wrote, and CI repeating it back would re-publish the entry.
+    offset = find_named_entity(text)
+    if offset is not None:
+        add("hygiene.scrub.named_entity",
+            "a named third party or internal tool name appears on this line: remove it, or "
+            "describe the situation without naming them", offset)
 
     for m in _LOOP_RE.finditer(text):
         if not _is_sentence_initial(text, m.start()):

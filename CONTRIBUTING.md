@@ -39,11 +39,13 @@ to a human.
 Run the same checks CI runs:
 
 ```bash
-pip install PyYAML pytest
-python ci/check.py
+pip install -r ci/requirements.txt
+python -m pytest ci/tests    # the checks' own tests — CI runs these first
+python ci/check.py           # then the repository itself
 ```
 
-It takes about a second and prints the file and line of anything it finds. Six families:
+Together they take a couple of seconds, and `check.py` prints the file and line of anything
+it finds. Six families:
 
 | Family | What it protects |
 |---|---|
@@ -63,7 +65,8 @@ you learn to ignore:
 - **Hygiene runs over the whole repository, not just skills.** Use `example.com` addresses
   and placeholder identifiers in anything you write. Real email addresses, real GUIDs and
   real tokens are refused — this repository is public, and some of it is written by a
-  machine reading real conversations.
+  machine reading real conversations. The same rule refuses a small set of named companies
+  and internal tool names; if it fires, describe the situation without naming them.
 
 We do not lint prose style. Write like a person.
 
@@ -77,12 +80,14 @@ There is no changelog file — releases are described in
 
 ## Where Ezra's own learning goes
 
-The Ezra hosted at [m8t.run](https://m8t.run) learns from the questions people ask it, and
-commits what it learns to a separate branch of this repository — never straight to `main`.
-Maintainers curate that branch and open a pull request to promote what belongs in the seed
-everyone else forks.
+The Ezra hosted at [m8t.run](https://m8t.run) is designed to learn from the questions people
+ask it and to commit what it learns to a separate branch of this repository — never
+straight to `main`. Maintainers then curate that branch and open a pull request to promote
+what belongs in the seed everyone else forks. That loop is not switched on yet;
+[AGENTS.md](AGENTS.md) describes where it stands.
 
-Those promotion pull requests run exactly the checks described above. That is deliberate:
+When it is, those promotion pull requests will run exactly the checks described above. That
+is deliberate:
 the hygiene rules are what stand between a real conversation and a public branch, so the
 machine's contributions are held to the same bar as yours.
 

@@ -25,12 +25,30 @@ def test_internal_host_is_refused():
     assert "hygiene.scrub.internal_host" in codes("see https://foo.msft.net/x")
 
 
-def test_internal_tool_is_refused():
-    assert "hygiene.scrub.internal_tool" in codes("pull it from powerbi")
+def test_microsoft_mailbox_on_a_subdomain_is_refused():
+    """The email rule exempts the whole microsoft.com domain on the grounds that this rule
+    owns it, so anything this misses falls between the two."""
+    assert "hygiene.scrub.mailbox" in codes("mail jane@corp.microsoft.com")
+    assert "hygiene.scrub.mailbox" in codes("mail jane@ntdev.microsoft.com")
 
 
-def test_named_precedent_is_refused():
-    assert "hygiene.scrub.precedent" in codes("like what Pay-i did")
+# Named third parties and internal tool names are matched by digest — see
+# ci/tests/test_entities.py, which uses invented names. No real entry appears in any
+# fixture; writing one here would republish it through the back door.
+#
+# The rule's WIRING into the sweep still needs proving, and that cannot use a real entry
+# either. Stubbing the lookup tests the connection without naming anything.
+def test_the_named_entity_rule_is_wired_into_the_sweep(monkeypatch):
+    monkeypatch.setattr("ci.rules.hygiene.find_named_entity", lambda text: 0)
+    assert "hygiene.scrub.named_entity" in codes("any prose at all")
+
+
+def test_the_named_entity_finding_never_echoes_the_match(monkeypatch):
+    monkeypatch.setattr("ci.rules.hygiene.find_named_entity", lambda text: text.index("Quibbleforth"))
+    findings = scan_text("we worked with Quibbleforth", "memory/x.md")
+    entity = next(f for f in findings if f.code == "hygiene.scrub.named_entity")
+    assert "Quibbleforth" not in entity.message
+    assert entity.line == 1
 
 
 # ── the Loop wiki, and the verb that is not it ─────────────────────────────────

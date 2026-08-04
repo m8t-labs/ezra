@@ -14,10 +14,22 @@ Two rules from the original are handled elsewhere, deliberately:
 """
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from .contracts import Finding
 from .frontmatter import parse
+
+_FENCE_RE = re.compile(r"^([ \t]*)(`{3,}|~{3,})[^\n]*\n.*?^[ \t]*\2[^\n]*$", re.M | re.S)
+_COMMENT_RE = re.compile(r"<!--.*?-->", re.S)
+
+
+def _registerable(text: str) -> str:
+    """Index and routing text with fenced blocks and HTML comments removed.
+
+    A registration inside a code fence or a comment looks right in the diff and does
+    nothing — the reader of an index cannot follow it, and neither can the agent."""
+    return _COMMENT_RE.sub("", _FENCE_RE.sub("", text))
 
 REQUIRED_FM = ("type", "title", "created", "updated", "tags", "origin")
 
@@ -44,8 +56,8 @@ def check_corpus(root: Path, persona_rel: str = "agent/persona.md") -> list[Find
         p = root / rel
         return p.read_text(encoding="utf-8") if p.is_file() else ""
 
-    skills_index = read("skills/_index.md")
-    persona = read(persona_rel)
+    skills_index = _registerable(read("skills/_index.md"))
+    persona = _registerable(read(persona_rel))
     f: list[Finding] = []
 
     for skill_md in skill_files:
@@ -63,7 +75,9 @@ def check_corpus(root: Path, persona_rel: str = "agent/persona.md") -> list[Find
                 f.append(Finding(f"corpus.frontmatter.{key}", f"missing required frontmatter '{key}'", rel))
 
         for section, code in REQUIRED_SECTIONS.items():
-            if f"## {section}" not in low_body:
+            # Anchored to a level-2 heading on its own line. A substring test accepted
+            # `### When to run this` and `#### Never`, which the loader does not.
+            if not re.search(rf"^## {re.escape(section)}\s*$", low_body, re.M):
                 f.append(Finding(f"corpus.section.{code}", f"missing required section '## {section}'", rel))
 
         if rel not in skills_index:
