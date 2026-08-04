@@ -91,6 +91,32 @@ is deliberate:
 the hygiene rules are what stand between a real conversation and a public branch, so the
 machine's contributions are held to the same bar as yours.
 
+## If you forked this repo
+
+Forking is how you get your own Ezra, and GitHub copies **everything** — including a few
+files that belong to the canonical project rather than to yours. Worth a minute:
+
+| File | What to do |
+|---|---|
+| `.github/CODEOWNERS` | Replace our handles with yours, or delete it. |
+| `.github/ISSUE_TEMPLATE/config.yml`, `SUPPORT.md` | These point at the canonical project. Repoint them at your own channels if your fork takes issues. |
+| `.github/dependabot.yml` | Ours. Keep it if you want the same updates, delete it if you don't. |
+| `ci/` | **Keep it.** It works in your fork — see below. |
+
+**The checks are built to survive being forked.** Rename the agent, rewrite its Voice, throw
+out our skills and write your own: all of that stays green. Only two rules are switched off
+outside the canonical repository — the persona's *name* (the platform pins this repo to a
+specific one) and the Voice golden (that is our agent's character, not yours). Everything
+that checks whether your brain actually *works* — layout, skill structure, index
+registration, resolvable links, no leaked secrets — keeps running on your content. That is
+the part worth having.
+
+**Your fork is yours, and the door back is open.** What you teach your Ezra stays in your
+repository under your rules. If you write a skill or work out a gotcha you are proud of,
+you can offer it upstream as an ordinary pull request here — the same review as any other
+contribution. There is no tooling for this yet and nothing automatic about it; it is simply
+allowed, and welcome.
+
 ## Who watches this repository
 
 [@orkeren21](https://github.com/orkeren21) and [@ilanbm](https://github.com/ilanbm) own

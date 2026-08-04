@@ -29,7 +29,10 @@ def voice_section(body: str) -> str | None:
     return m.group(1).strip() if m else None
 
 
-def check_persona(root: Path, expected_persona: str, voice_golden: str) -> list[Finding]:
+def check_persona(root: Path, expected_persona: str, voice_golden: str,
+                  canonical: bool = True) -> list[Finding]:
+    """`canonical` is False in a fork. Two rules below are switched off there — see
+    `canonical.py` for why the other rules are not."""
     path = root / PERSONA_PATH
     if not path.is_file():
         return [Finding("persona.missing", f"{PERSONA_PATH} is required — this is an agent repository",
@@ -48,7 +51,7 @@ def check_persona(root: Path, expected_persona: str, voice_golden: str) -> list[
             f.append(Finding(f"persona.field.{key}", f"frontmatter is missing '{key}'", PERSONA_PATH))
 
     name = str(fm.get("name") or "").strip()
-    if name and name != expected_persona:
+    if canonical and name and name != expected_persona:
         f.append(Finding(
             "persona.name.mismatch",
             f"declares name '{name}' but ci/repo.json expects '{expected_persona}'. "
@@ -77,7 +80,7 @@ def check_persona(root: Path, expected_persona: str, voice_golden: str) -> list[
     voice = voice_section(body)
     if voice is None:
         f.append(Finding("persona.voice.missing", "no '## Voice' section", PERSONA_PATH))
-    elif voice != voice_golden.strip():
+    elif canonical and voice != voice_golden.strip():
         f.append(Finding(
             "persona.voice.drift",
             "the Voice section differs from ci/golden/voice.md. Voice is the agent's "

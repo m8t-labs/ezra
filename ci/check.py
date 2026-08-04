@@ -16,6 +16,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from ci.rules.canonical import is_canonical     # noqa: E402
 from ci.rules.contracts import Finding          # noqa: E402
 from ci.rules.corpus import check_corpus        # noqa: E402
 from ci.rules.hygiene import is_ingested, scan_text  # noqa: E402
@@ -45,9 +46,11 @@ def run(root: Path, ci_dir: Path) -> list[Finding]:
     config = _repo_config(ci_dir)
     voice_golden = (ci_dir / "golden" / "voice.md").read_text(encoding="utf-8")
 
+    canonical = is_canonical(root, config.get("canonical"))
+
     findings: list[Finding] = []
     findings += check_layout(root)
-    findings += check_persona(root, config["persona"], voice_golden)
+    findings += check_persona(root, config["persona"], voice_golden, canonical)
     findings += check_corpus(root)
     findings += check_primitives(root)
     findings += check_links(root)
@@ -76,7 +79,10 @@ def main() -> int:
         print(f"::error {where}title={f.code}::{f.message}")
 
     if not findings:
-        print(f"✓ {len(FAMILIES)} rule families, no findings.")
+        config = _repo_config(CI_DIR)
+        where = "" if is_canonical(root, config.get("canonical")) else \
+            " (fork: the persona-name and Voice rules are the canonical repository's, and were skipped)"
+        print(f"✓ {len(FAMILIES)} rule families, no findings.{where}")
         return 0
 
     print(f"\n{len(findings)} finding(s):\n", file=sys.stderr)
