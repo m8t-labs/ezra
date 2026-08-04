@@ -1,0 +1,27 @@
+# ── AUTHORITATIVE — engine + process config. The repo IS the source of truth
+# for this section. Tooling must merge-preserve it, never regenerate it.
+engine:
+  version: "0.1.0"
+processes:
+  dreamer:
+    enabled: true
+    cadence: nightly          # skip-if-no-new pre-check is built into the dreamer
+  librarian:
+    enabled: true
+    lifecycle: { inbox: 14d, stale: 30d, archive: 90d }
+    artifactRetention: 30d
+    digestRetention: 90d
+  costReport:
+    enabled: true
+    cadenceDays: 14
+
+# ── MIRROR — link record convenience copy. NOT the source of truth —
+# the Foundry agent's metadata.brain is. Rewritten by `m8t brain link`.
+link:
+  repo: "{{REPO}}"          # owner/name
+  branch: main
+  topology: per-worker
+  schemaVersion: "2"
+  persona: "{{PERSONA}}"
+  agents:
+    - "{{AGENT}}"
