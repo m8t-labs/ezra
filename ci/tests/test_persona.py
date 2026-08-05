@@ -110,3 +110,101 @@ def test_voice_trailing_whitespace_does_not_drift(tmp_path):
 
 def test_unparseable_frontmatter_is_refused(tmp_path):
     assert "persona.frontmatter.invalid" in codes(tmp_path, "---\nname: [unclosed\n---\n\nbody\n")
+
+
+# ── targets.foundry.tools ──────────────────────────────────────────────────────
+# The platform forwards this block VERBATIM to the model host, so a malformed entry
+# ships rather than failing a parse. Every rule below has its own breaker: a rule
+# that cannot be made to fail is not a gate.
+
+WITH_TOOLS = GOOD.replace(
+    "default-target: foundry\n",
+    """default-target: foundry
+targets:
+  foundry:
+    kind: prompt
+    model: gpt-5.4
+    tools:
+      - type: web_search_preview
+      - type: function
+        name: present_decision
+        description: "Render a card the user answers by picking one of 2-4 options."
+        parameters:
+          type: object
+          properties:
+            title: { type: string, maxLength: 120 }
+          required: [title]
+          additionalProperties: false
+""",
+)
+
+
+def test_a_well_formed_tools_block_is_accepted(tmp_path):
+    assert codes(tmp_path, WITH_TOOLS) == set()
+
+
+def test_a_persona_declaring_no_tools_is_accepted(tmp_path):
+    """Not every agent declares tools, and this rule never says which it ought to have."""
+    assert codes(tmp_path, GOOD) == set()
+
+
+def test_a_list_of_tool_names_is_refused(tmp_path):
+    """The shape a contributor reaches for first. It parses, it forwards, and nothing
+    downstream can match a bare string to a deployed tool."""
+    broken = WITH_TOOLS.replace(
+        "    tools:\n      - type: web_search_preview", "    tools:\n      - web_search_preview")
+    assert "persona.tools.entry_not_a_mapping" in codes(tmp_path, broken)
+
+
+def test_tools_that_are_not_a_list_are_refused(tmp_path):
+    scalar = GOOD.replace(
+        "default-target: foundry\n",
+        "default-target: foundry\ntargets:\n  foundry:\n    tools: web_search_preview\n")
+    assert "persona.tools.not_a_list" in codes(tmp_path, scalar)
+
+
+def test_an_entry_without_a_type_is_refused(tmp_path):
+    broken = WITH_TOOLS.replace("      - type: web_search_preview\n", "      - server_label: learn\n")
+    assert "persona.tools.type_missing" in codes(tmp_path, broken)
+
+
+def test_a_function_tool_without_a_name_is_refused(tmp_path):
+    broken = WITH_TOOLS.replace("        name: present_decision\n", "")
+    assert "persona.tools.function_name_missing" in codes(tmp_path, broken)
+
+
+def test_the_same_function_tool_declared_twice_is_refused(tmp_path):
+    broken = WITH_TOOLS.replace(
+        "      - type: function\n        name: present_decision\n",
+        "      - type: function\n        name: present_decision\n"
+        "      - type: function\n        name: present_decision\n",
+        1,
+    )
+    assert "persona.tools.duplicate" in codes(tmp_path, broken)
+
+
+def test_a_multiline_description_is_refused(tmp_path):
+    """A literal block keeps its newlines, so the agent receives different bytes than a
+    single-line description — and is then permanently stale against a persona that reads
+    correctly."""
+    broken = WITH_TOOLS.replace(
+        '        description: "Render a card the user answers by picking one of 2-4 options."\n',
+        "        description: |\n          Render a card the user answers\n          by picking one of 2-4 options.\n",
+    )
+    assert "persona.tools.description_multiline" in codes(tmp_path, broken)
+
+
+def test_a_folded_description_is_accepted(tmp_path):
+    """A folded (`>`) scalar collapses to ONE line, so the agent receives exactly what a
+    single-line description would give. Refusing it would be red on correct work."""
+    folded = WITH_TOOLS.replace(
+        '        description: "Render a card the user answers by picking one of 2-4 options."\n',
+        "        description: >-\n          Render a card the user answers\n          by picking one of 2-4 options.\n",
+    )
+    assert codes(tmp_path, folded) == set()
+
+
+def test_a_quoted_schema_bound_is_refused(tmp_path):
+    """Quoting a bound turns it into a string the host will not enforce."""
+    broken = WITH_TOOLS.replace("maxLength: 120", 'maxLength: "120"')
+    assert "persona.tools.schema_not_numeric" in codes(tmp_path, broken)
