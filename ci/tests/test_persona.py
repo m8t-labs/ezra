@@ -208,3 +208,35 @@ def test_a_quoted_schema_bound_is_refused(tmp_path):
     """Quoting a bound turns it into a string the host will not enforce."""
     broken = WITH_TOOLS.replace("maxLength: 120", 'maxLength: "120"')
     assert "persona.tools.schema_not_numeric" in codes(tmp_path, broken)
+
+
+def test_a_repeated_non_function_tool_is_refused(tmp_path):
+    """Duplicate detection used to cover only function tools, so this passed here
+    while the platform's verifier reported drift on the deployed agent — a gate
+    greener than the runtime check it is supposed to anticipate."""
+    broken = WITH_TOOLS.replace(
+        "      - type: web_search_preview\n",
+        "      - type: web_search_preview\n      - type: web_search_preview\n", 1)
+    assert "persona.tools.duplicate" in codes(tmp_path, broken)
+
+
+def test_a_repeated_mcp_server_label_is_refused(tmp_path):
+    broken = WITH_TOOLS.replace(
+        "      - type: web_search_preview\n",
+        "      - type: mcp\n        server_label: learn\n"
+        "      - type: mcp\n        server_label: learn\n", 1)
+    assert "persona.tools.duplicate" in codes(tmp_path, broken)
+
+
+def test_two_mcp_servers_with_different_labels_are_accepted(tmp_path):
+    ok = WITH_TOOLS.replace(
+        "      - type: web_search_preview\n",
+        "      - type: mcp\n        server_label: learn\n"
+        "      - type: mcp\n        server_label: brain\n", 1)
+    assert codes(tmp_path, ok) == set()
+
+
+def test_a_boolean_schema_bound_is_refused(tmp_path):
+    """isinstance(True, int) is True in Python, so a YAML boolean slipped past the
+    numeric check while a quoted "120" was correctly refused."""
+    assert "persona.tools.schema_not_numeric" in codes(tmp_path, WITH_TOOLS.replace("maxLength: 120", "maxLength: true"))

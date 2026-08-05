@@ -66,16 +66,20 @@ def _check_foundry_tools(fm: dict) -> list[Finding]:
                              f"{where} has no string 'type'", PERSONA_PATH))
             continue
 
-        if kind == "function":
-            name = tool.get("name")
-            if not isinstance(name, str) or not name.strip():
-                f.append(Finding("persona.tools.function_name_missing",
-                                 f"{where} is a function tool with no 'name'", PERSONA_PATH))
-            else:
-                if name in seen:
-                    f.append(Finding("persona.tools.duplicate",
-                                     f"{where} declares '{name}' a second time", PERSONA_PATH))
-                seen.add(name)
+        if kind == "function" and (not isinstance(tool.get("name"), str) or not tool["name"].strip()):
+            f.append(Finding("persona.tools.function_name_missing",
+                             f"{where} is a function tool with no 'name'", PERSONA_PATH))
+
+        # Identity matches how the platform matches a declaration to a deployed
+        # tool: function tools by name, MCP servers by label, everything else by
+        # its bare type. Keying duplicates on anything narrower lets a repeat
+        # through here that the platform's verifier will report as drift.
+        identity = _tool_identity(tool)
+        if identity is not None:
+            if identity in seen:
+                f.append(Finding("persona.tools.duplicate",
+                                 f"{where} declares '{identity}' a second time", PERSONA_PATH))
+            seen.add(identity)
 
         description = tool.get("description")
         # What matters is the VALUE, not the source style. A folded (`>`) scalar
@@ -92,6 +96,18 @@ def _check_foundry_tools(fm: dict) -> list[Finding]:
     return f
 
 
+def _tool_identity(tool: dict) -> str | None:
+    """How a tool is named for duplicate purposes — mirrors the platform's matcher."""
+    kind = tool.get("type")
+    if kind == "function":
+        name = tool.get("name")
+        return name if isinstance(name, str) and name.strip() else None
+    if kind == "mcp":
+        label = tool.get("server_label")
+        return f"mcp:{label}" if isinstance(label, str) and label.strip() else None
+    return kind if isinstance(kind, str) else None
+
+
 _NUMERIC_KEYS = ("maxLength", "minLength", "minItems", "maxItems", "minimum", "maximum")
 
 
@@ -100,7 +116,7 @@ def _check_schema_numbers(node: object, where: str) -> list[Finding]:
     f: list[Finding] = []
     if isinstance(node, dict):
         for key, value in node.items():
-            if key in _NUMERIC_KEYS and not isinstance(value, (int, float)):
+            if key in _NUMERIC_KEYS and (isinstance(value, bool) or not isinstance(value, (int, float))):
                 f.append(Finding("persona.tools.schema_not_numeric",
                                  f"{where}: '{key}' must be a number, got {type(value).__name__}",
                                  PERSONA_PATH))
