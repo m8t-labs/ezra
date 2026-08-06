@@ -8,6 +8,12 @@ Once your platform is deployed (see [`deploy.md`](deploy.md)), this is how you r
 
 **Prerequisite:** `az login` to the tenant that holds your deployment — the CLI uses your active Azure session and discovers the gateway via Azure Resource Manager.
 
+> ⚠️ **Two commands referenced below — `m8t deploy` and `m8t coder deploy` — need access
+> to the m8t platform repository, which is not public.** They read deployment templates
+> and agent definitions out of a checkout, and this repository is not that checkout. They
+> refuse by name rather than failing confusingly. Everything else here works: team,
+> bindings, status, health and updates need no checkout.
+
 Joining a platform someone else installed, or seeing permission errors? Run `m8t prereqs` — it reports what your account is missing and `--fix` grants it. Full list: [`prerequisites.md`](prerequisites.md).
 
 ## Team management
