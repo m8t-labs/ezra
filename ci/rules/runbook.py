@@ -81,26 +81,26 @@ def check_runbook(root: Path) -> list[Finding]:
                          f"the GitHub App step must select the org with `{ORG_COMMAND}`",
                          RUNBOOK, line_of(0)))
 
-    raw_at = step.find(RAW_LISTING)
-    if raw_at != -1:
+    # EVERY occurrence in the whole document, not the first one inside the step. The
+    # message promises the listing is not "moved elsewhere or reworded into a co-equal
+    # option", and first-match-inside-the-step caught neither: a second, co-equal offer
+    # added alongside an intact fallback row passed, and so did moving it out of the step
+    # entirely. Both were demonstrated against the shipped runbook.
+    for raw_at in [m.start() for m in re.finditer(re.escape(RAW_LISTING), text)]:
         # Checking merely that the raw listing comes AFTER the CLI command is too weak:
         # the command could stay put while its row is softened from "Fall back: run ..."
         # into a co-equal "Prefer to check manually? Run ...", reintroducing the ambiguity
         # this exists to prevent. So it is pinned to the fallback row AND the row must
         # still mark it as subordinate.
-        verdict_at = step.find(FALLBACK_VERDICT)
-        if verdict_at == -1:
-            row = ""
-        else:
-            row_start = step.rfind("\n", 0, verdict_at) + 1
-            row_end = step.find("\n", verdict_at)
-            row = step[row_start:row_end if row_end != -1 else len(step)]
-        if not (RAW_LISTING in row and re.search(r"\bfall back\b", row, re.I)):
+        row_start = text.rfind("\n", 0, raw_at) + 1
+        row_end = text.find("\n", raw_at)
+        row = text[row_start:row_end if row_end != -1 else len(text)]
+        if not (FALLBACK_VERDICT in row and re.search(r"\bfall back\b", row, re.I)):
             f.append(Finding(
                 "runbook.org.raw_listing_promoted",
                 f"the raw membership listing must stay the labeled fallback in the "
                 f"`{FALLBACK_VERDICT}` row, not moved elsewhere or reworded into a co-equal option",
-                RUNBOOK, line_of(raw_at)))
+                RUNBOOK, text.count("\n", 0, raw_at) + 1))
 
     if LAUNCH_COMMAND not in text:
         f.append(Finding("runbook.org.not_passed_to_launch",
@@ -125,19 +125,23 @@ def check_runbook(root: Path) -> list[Finding]:
 
     # The message promises the explanation precedes the browser, so the order is what is
     # enforced — not merely that the phrase appears somewhere the command could precede.
-    memory_at = step.lower().find("working memory")
+    memory_at = next((m.start() for m in re.finditer(r"working memory", step, re.I)), -1)
     if memory_at == -1 or (browser_at != -1 and memory_at > browser_at):
         f.append(Finding("runbook.stop.unexplained",
                          "the step must say what the brains are before opening a browser",
                          RUNBOOK, line_of(max(memory_at, 0))))
 
     # ── no skip path that does not work ────────────────────────────────────────
-    for pattern in NON_WORKING_SKIPS:
-        m = pattern.search(text)
-        if m:
-            f.append(Finding("runbook.skip.not_a_working_path",
-                             "this skip is not a working path and must not be offered — the "
-                             "from-zero install requires a GitHub App",
-                             RUNBOOK, text.count("\n", 0, m.start()) + 1))
+    # Every runbook, not just this one. install.md is the entry point the founder is
+    # actually handed, and a skip offered there strands them exactly as hard.
+    for rel in sorted(q.relative_to(root).as_posix() for q in guides.rglob("*.md")):
+        body = (root / rel).read_text(encoding="utf-8", errors="replace")
+        for pattern in NON_WORKING_SKIPS:
+            m = pattern.search(body)
+            if m:
+                f.append(Finding("runbook.skip.not_a_working_path",
+                                 "this skip is not a working path and must not be offered — the "
+                                 "from-zero install requires a GitHub App",
+                                 rel, body.count("\n", 0, m.start()) + 1))
 
     return f

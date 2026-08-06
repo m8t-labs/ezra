@@ -71,7 +71,7 @@ m8t coder deploy <name> --env M8T_CODER_EXEC_TIMEOUT_SECONDS=300
 
 <details><summary>Manual fallback (raw SDK + az)</summary>
 
-Create the version via the SDK, then `az role assignment create --assignee-object-id <agentOID> --assignee-principal-type ServicePrincipal --role 53ca6127-db72-4b80-b1b0-d745d6d5456d --scope <.../accounts/<account>>`. Documented in `agents/coding-agent/README.md`. Use only if the CLI is unavailable.
+Create the version via the SDK, then `az role assignment create --assignee-object-id <agentOID> --assignee-principal-type ServicePrincipal --role 53ca6127-db72-4b80-b1b0-d745d6d5456d --scope <.../accounts/<account>>`. Documented in `agents/coding-agent/README.md` step 5. Use only if the CLI is unavailable.
 
 </details>
 

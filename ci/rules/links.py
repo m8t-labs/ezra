@@ -122,15 +122,19 @@ def check_links(root: Path) -> list[Finding]:
     known = _known(root)
     findings: list[Finding] = []
     for rel in markdown_files(root):
-        # Product runbooks reference the platform repository on purpose — `installer/`,
-        # `deploy/`, `apps/cli/` are real paths, just not in this repository. Resolving
-        # them here would report every one of them broken. They stay visible as link
-        # TARGETS (`every_path` still lists them), so the README can point at the runbook.
-        if is_docs(rel):
-            continue
         text = (root / rel).read_text(encoding="utf-8", errors="replace")
         seen: set[str] = set()
         for target, offset, convention in _candidates(text):
+            # Product runbooks name platform-repository paths in prose — `installer/`,
+            # `deploy/`, `apps/cli/` are real files, just not in this repository, and
+            # resolving them here would report every one as broken. Only that INCIDENTAL
+            # form is excused. Their `[text](target)` links stay checked, because those
+            # are the founder's navigation between runbooks and a broken one strands the
+            # reader mid-install. Measured when this was written: 48 unresolvable
+            # candidates in guides/, every one incidental, zero explicit — so keeping
+            # explicit links armed costs nothing today and catches the next typo.
+            if is_docs(rel) and convention == INCIDENTAL:
+                continue
             if _skip(target, convention) or target in seen or _resolves(known, rel, target):
                 continue
             seen.add(target)

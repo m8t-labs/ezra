@@ -10,7 +10,8 @@ Five destinations, depending on what you need.
 | Report a bug in the platform, the CLI, or the install itself | [Issues on the m8t releases project](https://github.com/m8t-labs/m8t-releases/issues) |
 | Report a security issue or a leaked secret | [Report privately](https://github.com/m8t-labs/ezra/security/advisories/new), or <security@m8t.run> — see [SECURITY.md](SECURITY.md) |
 
-Every destination above is the **canonical Ezra project**, `m8t-labs/ezra`. If you are
+Every destination above is ours, not yours: the **canonical Ezra project**,
+`m8t-labs/ezra`, and the project its platform ships from. If you are
 reading this in a fork, these are pointers upstream, not your own support channels — see
 [CONTRIBUTING.md](CONTRIBUTING.md) for what to change.
 
