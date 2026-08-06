@@ -22,6 +22,25 @@ drop that file from every sweep."""
 EXCLUDED_ANYWHERE = frozenset({".git", ".pytest_cache", "__pycache__", ".venv"})
 """Tool droppings, which can appear at any depth and are never content."""
 
+DOCS_ROOTS = frozenset({"guides"})
+"""Product runbooks: prose a founder reads, not content the agent reads.
+
+The BYOC install runbook lives here because the platform's source is private and the
+runbook has to stay anonymously readable. It is not brain content — the agent never reads
+it, the platform never consumes it, and its references point at files in the platform
+repository. So it is SCANNED (a token pasted into a runbook is still a leaked token) but
+excused from the reference resolver and from the two hygiene rules that fire on correct
+Azure documentation: role-definition GUIDs and Microsoft's own `aka.ms` links.
+
+Excused BY NAME, at the root only, one entry per folder. A prefix or a wildcard would let
+a future folder inherit two exemptions silently, which is how an exemption outlives the
+reason it was granted."""
+
+
+def is_docs(rel: str) -> bool:
+    """True when this file is a product runbook rather than brain content."""
+    return rel.split("/")[0] in DOCS_ROOTS
+
 MARKDOWN = (".md",)
 TEXT = (".md", ".yml", ".yaml", ".json", ".txt")
 EXTENSIONLESS = frozenset({"LICENSE", "NOTICE", "CODEOWNERS"})

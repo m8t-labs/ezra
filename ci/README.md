@@ -28,7 +28,7 @@ repository to check the runner's wiring against real content, and `test_routing_
 reads `SUPPORT.md` and the issue-template chooser, because agreement between those two
 files *is* the thing it tests.
 
-## Three things worth knowing before you edit a rule
+## Four things worth knowing before you edit a rule
 
 **`ci/` is excluded from the sweep it performs.** A checker's fixtures contain examples of
 what it hunts for, so scanning itself would be permanently red.
@@ -44,6 +44,15 @@ sizes), RFC 2606 example domains (content that teaches email setup uses them), a
 safety rules, which apply only to content the agent ingests — a security policy explaining
 prompt injection has to use the words.
 
+**`guides/` is documentation, not brain content.** It holds the install runbook a founder
+pastes into a coding agent, and it is the same rule above applied a fourth time: its links
+point at the platform repository on purpose, a deploy step names an Azure role by its
+GUID, and an install step cites Microsoft's own `aka.ms` link. So the resolver skips it and
+those two hygiene rules stand down — while secrets, mailboxes, named entities and internal
+strings stay armed, because a token pasted into a runbook is still a leaked token. The
+folder is named in `rules/tree.py`, one entry, at the root only: a prefix would let the
+next folder inherit the exemptions without anyone deciding to grant them.
+
 ## Reusing this in another agent repository
 
 Copy `ci/`, then change four things:
@@ -53,6 +62,9 @@ Copy `ci/`, then change four things:
 3. `rules/hygiene.py` — `_OWN_DOMAIN`, if the maintainers' email domain differs.
 4. `tests/test_routing_agrees.py` — it names this repository's support mailbox, or drop it
    if that repository has no `SUPPORT.md`.
+5. `rules/tree.py` — `DOCS_ROOTS`, which is empty for a repository that carries no product
+   runbooks. Leaving `guides` in it there would grant two hygiene exemptions to a folder
+   that does not exist, waiting for someone to create one.
 
 Every other rule reads the agent-repo layout, which is the same everywhere. The digests in
 `rules/entities.py` carry no repository-specific information and can be copied as they are.

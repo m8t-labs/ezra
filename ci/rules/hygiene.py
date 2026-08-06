@@ -147,12 +147,19 @@ def _placeholder_guid(value: str) -> bool:
     return len(hexits) == 1
 
 
-def scan_text(text: str, locus: str, ingested: bool = True) -> list[Finding]:
+def scan_text(text: str, locus: str, ingested: bool = True, docs: bool = False) -> list[Finding]:
     """Return hard findings for one document. At most one finding per rule per document —
     three mailboxes in one file are one problem, not three.
 
     `ingested` says whether the agent reads this file as instructions; see
-    `is_ingested`. It gates the safety rules only."""
+    `is_ingested`. It gates the safety rules only.
+
+    `docs` says whether this is a product runbook rather than brain content; see
+    `tree.is_docs`. It gates exactly two rules — role GUIDs and `aka.ms` links — which
+    fire on correct content in Azure documentation. Secrets, mailboxes, named entities
+    and internal strings stay armed: a leaked token in a runbook is still a leaked token.
+    Both defaults are the strict ones, so a caller that forgets an argument gets the
+    stricter sweep rather than a quieter one."""
     found: list[Finding] = []
     seen: set[str] = set()
 
@@ -184,10 +191,14 @@ def scan_text(text: str, locus: str, ingested: bool = True) -> list[Finding]:
                 "reference to the internal Loop wiki: cite a public source instead", m.start())
             break
 
-    for m in _AKAMS_RE.finditer(low):
-        slug = m.group(0).rstrip(".")   # the char class greedily takes a trailing sentence period
-        if slug not in AKAMS_ALLOWLIST:
-            add("hygiene.scrub.akams", f"non-allowlisted aka.ms link: {slug}", m.start(), key=f"akams:{slug}")
+    # A runbook that tells a founder to install the Azure CLI cites Microsoft's own
+    # short link to do it. The allowlist exists to stop brain content citing an internal
+    # redirect; it was never meant to adjudicate install instructions.
+    if not docs:
+        for m in _AKAMS_RE.finditer(low):
+            slug = m.group(0).rstrip(".")   # the char class greedily takes a trailing sentence period
+            if slug not in AKAMS_ALLOWLIST:
+                add("hygiene.scrub.akams", f"non-allowlisted aka.ms link: {slug}", m.start(), key=f"akams:{slug}")
 
     if ingested:
         for pat in DESTRUCTIVE:
@@ -212,12 +223,17 @@ def scan_text(text: str, locus: str, ingested: bool = True) -> list[Finding]:
         add("hygiene.identity.email",
             "an email address that is not ours: use an example.com placeholder", m.start())
 
-    for m in _GUID_RE.finditer(text):
-        if _placeholder_guid(m.group(0)):
-            continue
-        add("hygiene.identity.guid",
-            "a GUID (subscription, tenant or object id) has no place in public brain content",
-            m.start())
+    # In brain content a GUID is a subscription, tenant or object id — someone's. In a
+    # deploy runbook it is an Azure ROLE DEFINITION id, which is public, fixed, and the
+    # only unambiguous way to name a role. The rule keeps its meaning by not applying
+    # where that meaning does not hold.
+    if not docs:
+        for m in _GUID_RE.finditer(text):
+            if _placeholder_guid(m.group(0)):
+                continue
+            add("hygiene.identity.guid",
+                "a GUID (subscription, tenant or object id) has no place in public brain content",
+                m.start())
 
     m = _WORK_ITEM_RE.search(text)
     if m:

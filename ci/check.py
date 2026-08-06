@@ -24,7 +24,7 @@ from ci.rules.layout import check_layout        # noqa: E402
 from ci.rules.links import check_links          # noqa: E402
 from ci.rules.persona import check_persona      # noqa: E402
 from ci.rules.primitives import check_primitives  # noqa: E402
-from ci.rules.tree import text_files            # noqa: E402
+from ci.rules.tree import is_docs, text_files   # noqa: E402
 
 CI_DIR = Path(__file__).resolve().parent
 
@@ -56,7 +56,7 @@ def run(root: Path, ci_dir: Path) -> list[Finding]:
     findings += check_links(root)
     for rel in text_files(root):
         text = (root / rel).read_text(encoding="utf-8", errors="replace")
-        findings += scan_text(text, rel, ingested=is_ingested(rel))
+        findings += scan_text(text, rel, ingested=is_ingested(rel), docs=is_docs(rel))
     return findings
 
 

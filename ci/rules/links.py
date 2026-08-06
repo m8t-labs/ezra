@@ -24,7 +24,7 @@ import re
 from pathlib import Path
 
 from .contracts import Finding
-from .tree import every_path, markdown_files
+from .tree import every_path, is_docs, markdown_files
 
 # Runtime brain space. `.gitkeep`-only on the default branch by contract, so nothing under
 # these can resolve at pull-request time — and content legitimately cites example paths
@@ -122,6 +122,12 @@ def check_links(root: Path) -> list[Finding]:
     known = _known(root)
     findings: list[Finding] = []
     for rel in markdown_files(root):
+        # Product runbooks reference the platform repository on purpose — `installer/`,
+        # `deploy/`, `apps/cli/` are real paths, just not in this repository. Resolving
+        # them here would report every one of them broken. They stay visible as link
+        # TARGETS (`every_path` still lists them), so the README can point at the runbook.
+        if is_docs(rel):
+            continue
         text = (root / rel).read_text(encoding="utf-8", errors="replace")
         seen: set[str] = set()
         for target, offset, convention in _candidates(text):
