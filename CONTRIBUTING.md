@@ -45,7 +45,7 @@ python ci/check.py           # then the repository itself
 ```
 
 Together they take a couple of seconds, and `check.py` prints the file and line of anything
-it finds. Six families:
+it finds. Seven families:
 
 | Family | What it protects |
 |---|---|
@@ -55,6 +55,7 @@ it finds. Six families:
 | `primitives` | Two reference documents the platform parses as wire contracts — dropping a field breaks them silently. |
 | `links` | Every internal reference resolves. Backticked paths, Markdown links and bare paths all count. |
 | `hygiene` | Nothing internal, secret or personal reaches a public branch. |
+| `runbook` | The install runbook's GitHub App step: a deliberately chosen org, a stop before the browser opens, and no skip path that does not work. |
 
 Two rules deserve their reasoning stated, because a checker that surprises you is a checker
 you learn to ignore:

@@ -50,7 +50,12 @@ SCRUB = [
 _LOOP_RE = re.compile(r"\bLoop\b")
 _SENTENCE_INITIAL = re.compile(r"(?:^|[.!?:])\s*(?:[#>*+-]+\s*|\d+[.)]\s*)*$")
 
-AKAMS_ALLOWLIST = frozenset({"aka.ms/oai/stuquotarequest", "aka.ms/oai/quotaincrease"})
+AKAMS_ALLOWLIST = frozenset({
+    "aka.ms/oai/stuquotarequest",
+    "aka.ms/oai/quotaincrease",
+    # Microsoft's own Azure CLI installer, cited by the Windows prereqs runbook.
+    "aka.ms/installazurecliwindowsx64",
+})
 _AKAMS_RE = re.compile(r"aka\.ms/[a-z0-9._/-]+")
 
 DESTRUCTIVE = [
@@ -106,14 +111,30 @@ _EMAIL_RE = re.compile(r"\b[\w.+-]+@([\w-]+(?:\.[\w-]+)+)\b")
 
 _GUID_RE = re.compile(r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b", re.I)
 
+GUID_ALLOWLIST = frozenset({
+    # Azure Cognitive Services OpenAI Contributor — a role DEFINITION id. Public, fixed,
+    # and the only unambiguous way for the workers runbook to name a role in an
+    # `az role assignment create`. Written down one value at a time on purpose: a
+    # folder-wide exemption here would also excuse a pasted subscription or tenant id,
+    # which is the leak the rule exists for.
+    "53ca6127-db72-4b80-b1b0-d745d6d5456d",
+})
+
 _WORK_ITEM_RE = re.compile(r"\bW-\d{6,}\b")
 # Narrowed to a numbered reference. A bare `§` is legitimate in legal or EU-regulatory
 # prose a contributor might reasonably add.
 _SECTION_REF_RE = re.compile(r"§\s*\d")
 
 # Content the agent actually reads as instructions: the consumed set, plus the operating
-# doctrine. The safety rules — destructive commands and prompt-injection markers — exist to
-# protect the agent from what it ingests, so they apply HERE and nowhere else.
+# doctrine. The DESTRUCTIVE rule exists to protect the agent from what it ingests, so it
+# applies HERE and nowhere else — an uninstall runbook legitimately says `rm -rf ~/.m8t`,
+# and a prereqs runbook legitimately pipes Microsoft's installer to a shell.
+#
+# The INJECTION rule is NOT bounded the same way, because the threat is not the same. It
+# applies to everything an agent ACTS ON, which now includes the install runbook: a
+# founder pastes it into a coding agent holding their cloud credentials, and unlike the
+# consumed set it is contributor-editable and carries no content digest. There is no
+# legitimate injection string in an install runbook, so the rule costs nothing there.
 #
 # They must not apply to repository furniture. A SECURITY.md that explains what prompt
 # injection is has to use the vocabulary of prompt injection; an injection guard that fires
@@ -147,12 +168,19 @@ def _placeholder_guid(value: str) -> bool:
     return len(hexits) == 1
 
 
-def scan_text(text: str, locus: str, ingested: bool = True) -> list[Finding]:
+def scan_text(text: str, locus: str, ingested: bool = True, docs: bool = False) -> list[Finding]:
     """Return hard findings for one document. At most one finding per rule per document —
     three mailboxes in one file are one problem, not three.
 
     `ingested` says whether the agent reads this file as instructions; see
-    `is_ingested`. It gates the safety rules only."""
+    `is_ingested`. It gates the safety rules only.
+
+    `docs` says whether this is a product runbook rather than brain content; see
+    `tree.is_docs`. It gates exactly two rules — role GUIDs and `aka.ms` links — which
+    fire on correct content in Azure documentation. Secrets, mailboxes, named entities
+    and internal strings stay armed: a leaked token in a runbook is still a leaked token.
+    Both defaults are the strict ones, so a caller that forgets an argument gets the
+    stricter sweep rather than a quieter one."""
     found: list[Finding] = []
     seen: set[str] = set()
 
@@ -195,6 +223,8 @@ def scan_text(text: str, locus: str, ingested: bool = True) -> list[Finding]:
             if m:
                 add("hygiene.safety.destructive", f"destructive command pattern /{pat}/", m.start())
 
+    # Anything an agent acts on — what it ingests, and the runbook it is told to walk.
+    if ingested or docs:
         for pat in INJECTION:
             m = re.search(pat, low)
             if m:
@@ -213,10 +243,11 @@ def scan_text(text: str, locus: str, ingested: bool = True) -> list[Finding]:
             "an email address that is not ours: use an example.com placeholder", m.start())
 
     for m in _GUID_RE.finditer(text):
-        if _placeholder_guid(m.group(0)):
+        if _placeholder_guid(m.group(0)) or m.group(0).lower() in GUID_ALLOWLIST:
             continue
         add("hygiene.identity.guid",
-            "a GUID (subscription, tenant or object id) has no place in public brain content",
+            "a GUID (subscription, tenant or object id) has no place in a public repository — "
+            "if it is a public role-definition id, add it to GUID_ALLOWLIST with a note saying what it is",
             m.start())
 
     m = _WORK_ITEM_RE.search(text)

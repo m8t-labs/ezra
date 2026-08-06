@@ -16,6 +16,10 @@ contact_links:
     url: https://m8t.run
     about: This repository is Ezra's knowledge. Questions about deploying or operating it start at m8t.run.
 
+  - name: Report a bug in the platform, the CLI, or the install
+    url: https://github.com/m8t-labs/m8t-releases/issues
+    about: This repository is Ezra's knowledge. A broken install, a CLI error or a platform bug is tracked with the releases it ships in.
+
   - name: Report a security issue in the Ezra project
     url: https://github.com/m8t-labs/ezra/security/advisories/new
     about: Private reporting on the canonical repository. Never open a public issue for a vulnerability.

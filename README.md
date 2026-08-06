@@ -30,9 +30,18 @@ pull request.
 Ezra runs on [m8t](https://m8t.run), which deploys into **your own Azure
 subscription** — your tenant, your data, your bill, no middleman holding your credentials.
 
+### Quickstart — one paste, about five minutes
+
+Copy the whole box below and paste it into your coding agent (Claude Code, GitHub Copilot CLI, or VS Code Copilot Chat):
+
+```text
+Dear agent, please clone https://github.com/m8t-labs/ezra into a folder the user selects — ask them where to clone it; feel free to suggest a location based on what you can see in their environment. Then read guides/install.md from the cloned repo and follow it end-to-end.
 ```
-Fork this repo  →  install m8t  →  your Ezra runs on your fork
-```
+
+The agent does the work and pauses only for sign-ins and genuine decisions. When it finishes, your platform is live in **your own Azure subscription** and your workers are a chat away — optional local tooling for your agent comes at the end of the same runbook.
+
+The runbooks it follows live in [`guides/`](guides/install.md) — install, deploy, add
+workers, operate, uninstall.
 
 Your fork becomes your Ezra's brain: it reads from it at the start of a task and writes
 back what it learns. What you teach your Ezra stays yours. What you send upstream makes

@@ -22,6 +22,39 @@ drop that file from every sweep."""
 EXCLUDED_ANYWHERE = frozenset({".git", ".pytest_cache", "__pycache__", ".venv"})
 """Tool droppings, which can appear at any depth and are never content."""
 
+DOCS_ROOTS = frozenset({"guides"})
+"""Product runbooks: prose a founder pastes into a coding agent.
+
+The BYOC install runbook lives here because the platform's source is private and the
+runbook has to stay anonymously readable. It is not BRAIN content — the platform does not
+consume it, and it is outside the content digest — but it is emphatically content an
+agent ACTS ON: the README hands it to a coding agent holding the founder's cloud
+credentials, and `rules/runbook.py` guards the step in it that opens a browser.
+
+That distinction decides which rules apply, one at a time rather than as a bloc:
+
+* the **reference resolver** skips its INCIDENTAL references only — a backticked
+  `installer/entrypoint.sh` is a real file in another repository. Its `[text](target)`
+  links stay checked, because those are the founder's navigation between runbooks;
+* the **destructive-command** rule stands down: `rm -rf ~/.m8t` is what an uninstall
+  guide correctly says, and a prereqs guide correctly pipes Microsoft's installer to a
+  shell;
+* the **prompt-injection** rule stays ARMED, and is armed here BECAUSE of this folder.
+  Nothing legitimate in an install runbook looks like an injection string, and this is
+  the repository's softest target: public, contributor-editable, carried by no digest,
+  and read by an agent that can act on it;
+* everything else — secrets, mailboxes, named entities, GUIDs, internal strings — applies
+  unchanged. The two values that legitimately look like leaks are allowlisted one at a
+  time in `rules/hygiene.py`, not excused folder-wide.
+
+Named BY NAME, at the root only. A prefix or a wildcard would let a future folder inherit
+this treatment silently, which is how an exemption outlives the reason it was granted."""
+
+
+def is_docs(rel: str) -> bool:
+    """True when this file is a product runbook rather than brain content."""
+    return rel.split("/")[0] in DOCS_ROOTS
+
 MARKDOWN = (".md",)
 TEXT = (".md", ".yml", ".yaml", ".json", ".txt")
 EXTENSIONLESS = frozenset({"LICENSE", "NOTICE", "CODEOWNERS"})
