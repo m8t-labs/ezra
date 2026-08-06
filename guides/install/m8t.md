@@ -220,6 +220,12 @@ Expected: three `ok` lines, plus the cloned-repo absolute path.
 
 **Final verification — architect in sync.**
 
+> ⚠️ **This section needs access to the m8t platform repository, which is not public.**
+> Rendering a `local`-target persona reads it from `personas/` in a platform checkout,
+> and `m8t architect-check` reads the same place. In this repository they refuse by name.
+> The rest of the install — the platform itself, and talking to your workers — does not
+> depend on this step; it is optional tooling for your coding agent.
+
 After all renders complete, verify the install. This uses the `m8t` CLI (Node ≥ 20). If it isn't installed yet, install it first — `npm install -g @m8t-stack/cli` (see [`install/m8t-cli.md`](m8t-cli.md)):
 
 macOS:

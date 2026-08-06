@@ -8,6 +8,14 @@
 
 Worker deploys read the platform's Key Vault **as you**, so your own account needs access to it — being an Owner of the subscription is not enough. Run `m8t prereqs` to check, `m8t prereqs --fix` to grant it. See [`prerequisites.md`](prerequisites.md).
 
+> ⚠️ **These commands need access to the m8t platform repository, which is not public.**
+> They read platform content — agent definitions and deployment templates — out of a
+> checkout, and this repository is not that checkout. If you run them you will get a
+> refusal saying so by name, not a confusing error.
+>
+> Your installation still updates itself: the auto-update rail applies published releases
+> without needing any checkout at all.
+
 ## How to read this file
 
 You're an agent. Ask the user which worker they want, then run the matching section. Pause only for sign-ins, ambiguous choices (multiple Foundry projects/models), or failures. Every step is idempotent — re-running creates a new version, never a duplicate.

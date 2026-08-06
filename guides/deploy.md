@@ -8,6 +8,14 @@
 
 **Idempotent.** Re-running this file is the supported update path; each step no-ops when state already matches.
 
+> ⚠️ **These commands need access to the m8t platform repository, which is not public.**
+> They read platform content — agent definitions and deployment templates — out of a
+> checkout, and this repository is not that checkout. If you run them you will get a
+> refusal saying so by name, not a confusing error.
+>
+> Your installation still updates itself: the auto-update rail applies published releases
+> without needing any checkout at all.
+
 ## Prerequisites
 
 - Azure CLI ≥ 2.86 (`az version`), Node ≥ 20, `gh` authenticated (`gh auth status`). (`docker buildx` is only needed if you build your own image — see Step 1; the default path pulls the public image and needs no Docker.)
