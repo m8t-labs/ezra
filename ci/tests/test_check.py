@@ -70,6 +70,17 @@ def _break_hygiene(root: Path) -> None:
                  encoding="utf-8")
 
 
+def _break_runbook(root: Path) -> None:
+    """The stop moves after the command that opens the browser."""
+    p = root / "guides" / "bootstrap.md"
+    text = p.read_text(encoding="utf-8")
+    stop = "This is a stop, not a notification"
+    browser = "m8t brain app-create --org"
+    without = text.replace(stop, "", 1)
+    at = without.find(browser) + len(browser)
+    p.write_text(without[:at] + f"\n\n{stop}\n" + without[at:], encoding="utf-8")
+
+
 BREAKERS = {
     "layout": _break_layout,
     "persona": _break_persona,
@@ -77,6 +88,7 @@ BREAKERS = {
     "primitives": _break_primitives,
     "links": _break_links,
     "hygiene": _break_hygiene,
+    "runbook": _break_runbook,
 }
 
 
@@ -85,6 +97,15 @@ def test_each_family_is_reachable_from_the_runner(clean_repo, family):
     """Deleting the family's call from `run()` makes exactly this test fail."""
     BREAKERS[family](clean_repo)
     assert family in families_of(run(clean_repo, CI_DIR))
+
+
+def test_contributing_names_every_family():
+    """CONTRIBUTING's table is the third hand-written copy of this list, and the only one
+    a contributor actually reads. It drifted the moment a family was added — this makes
+    that a test failure rather than a documentation bug nobody notices."""
+    contributing = (Path(__file__).resolve().parents[2] / "CONTRIBUTING.md").read_text(encoding="utf-8")
+    missing = [f for f in FAMILIES if f"| `{f}` |" not in contributing]
+    assert not missing, f"described in --list but absent from CONTRIBUTING.md's table: {missing}"
 
 
 def test_every_documented_family_has_a_breaker():
