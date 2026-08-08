@@ -208,31 +208,18 @@ m8t bootstrap launch --location <region> --resource-group <rg-name> --reinstall-
 and the two names must match. Requiring it here is deliberate: blind re-entry into a partial install
 is its own class of bug.
 
-### 4b. Chat with Ezra while it installs (parallel)
+### 4b. Chat with Ezra while it installs (parallel) — not available today
 
-While the install runs, bring up the local onboarding chat. From the repo checkout:
+This step needs the platform repository, which is not published. Run from this checkout,
+`m8t bootstrap ui` refuses rather than half-running.
 
-```bash
-m8t bootstrap ui --repo-root "$(pwd)"
-```
-
-> **If it stops with "holds more than one Foundry project"** — uncommon: it means this install's own resource group holds more than one. Name the one you want:
->
-> ```bash
-> m8t bootstrap ui --repo-root "$(pwd)" --endpoint <projectEndpoint>
-> ```
->
-> `m8t bootstrap status` prints this install's endpoint (`result.foundryEndpoint`). Other Foundry projects elsewhere in your subscription are ignored automatically, so reinstalling alongside an existing platform needs no flag.
-
-This deploys **Ezra**, your Azure assistant, writes `apps/web/.env.local` (chat-only unless `--voice` is set), installs the web deps, starts the webapp **in the background**, prints the URL, and **returns** — no separate terminal needed. Your browser opens to <http://localhost:3000> automatically (if it doesn't, browse there yourself), **Sign in with Microsoft** (the same account as `az login`), and chat — Ezra asks a couple of quick questions about your company, and can help you request more model quota if this subscription is short on it. The first turn may briefly show a **"Warming up…"** card while your advisor comes online — it reconnects automatically; that's expected on a brand-new platform. The UI needs no platform/gateway — it talks to Foundry directly with your credential. The onboarding intake is text-only; `--voice` does not change it.
-
-Ezra keeps it short — what the company is called and what you build — and only raises anything else if it actually applies to your subscription. Refreshing the tab is safe: the conversation picks up right where it left off.
-
-> The Azure AI Foundry portal (ai.azure.com) may show a "you don't have permission to build agents" wall for a few minutes right after install while data-plane RBAC propagates — refresh the page; you already have access (your intake chat proves it).
-
-To stop the UI later, run `m8t bootstrap ui --stop`.
+Skip it and carry on to step 5. The install completes without it, and you meet Ezra in your
+deployed web app when it finishes — nothing in this step is a prerequisite for anything below.
 
 #### Which model the intake advisor runs on
+
+This describes the parked step above; it is recorded here because the model list is
+generated from the CLI and kept in step with it.
 
 The advisor runs on the best model your subscription can actually deploy. At startup
 the CLI walks an ordered preference list, top to bottom, and stops at the first model
@@ -269,7 +256,7 @@ quota, which varies by subscription and region.
 
 ### 5. Watch it to done — this also finishes your local setup
 
-Watch the cloud install progress while you chat in step 4b:
+Watch the cloud install progress:
 
 ```bash
 m8t bootstrap status --watch --repo-root "$(pwd)"
