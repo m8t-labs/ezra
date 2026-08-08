@@ -50,14 +50,14 @@ one rather than carrying it. See [`companion.md`](companion.md).
 macOS:
 
 ```bash
-claude plugin marketplace add m8t-labs/m8t
+claude plugin marketplace add m8t-labs/m8t-releases
 claude plugin install m8t@m8t
 ```
 
 Windows (PowerShell):
 
 ```powershell
-claude plugin marketplace add m8t-labs/m8t
+claude plugin marketplace add m8t-labs/m8t-releases
 claude plugin install m8t@m8t
 ```
 
