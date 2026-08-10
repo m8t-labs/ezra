@@ -1,0 +1,6 @@
+{
+  "_comment": "Where `m8t bootstrap profile` sends a founder to chat while their platform installs. The CLI reads this file anonymously at install time, so rotating the invite is a change here — never a CLI release. Set enabled to true and fill in inviteUrl to switch chat on; set enabled to false to switch it off. When it is off, unreachable, or malformed, the CLI says so in one line, opens nothing, and the install carries on unaffected. CHANGE THIS THROUGH A PULL REQUEST: the checks that catch a typo here (ci/rules/chat_invite.py) run on pull requests only, and the CLI reads this file fail-soft — so a mistake committed straight to main switches chat off for every founder with nothing going red. Do not move this file without changing CHAT_INVITE_PATH in the platform CLI in the same breath; the path is a wire contract between two repositories.",
+  "schemaVersion": 1,
+  "enabled": false,
+  "inviteUrl": ""
+}

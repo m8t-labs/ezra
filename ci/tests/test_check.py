@@ -81,6 +81,16 @@ def _break_runbook(root: Path) -> None:
     p.write_text(without[:at] + f"\n\n{stop}\n" + without[at:], encoding="utf-8")
 
 
+def _break_chat_invite(root: Path) -> None:
+    """The invite is switched on, pointing somewhere the CLI would refuse to open."""
+    p = root / ".m8t" / "chat-invite.json"
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(
+        '{"schemaVersion": 1, "enabled": true, "inviteUrl": "https://evil.example/i/x"}\n',
+        encoding="utf-8",
+    )
+
+
 BREAKERS = {
     "layout": _break_layout,
     "persona": _break_persona,
@@ -89,6 +99,7 @@ BREAKERS = {
     "links": _break_links,
     "hygiene": _break_hygiene,
     "runbook": _break_runbook,
+    "chat-invite": _break_chat_invite,
 }
 
 
