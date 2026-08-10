@@ -1,0 +1,6 @@
+{
+  "_comment": "Where `m8t bootstrap profile` sends a founder to chat while their platform installs. The CLI reads this file anonymously at install time, so rotating the invite is a change here — never a CLI release. Set enabled to true and fill in inviteUrl to switch chat on; set enabled to false to switch it off. When it is off, unreachable, or malformed, the CLI says so in one line, opens nothing, and the install carries on unaffected.",
+  "schemaVersion": 1,
+  "enabled": false,
+  "inviteUrl": ""
+}
