@@ -17,6 +17,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from ci.rules.canonical import is_canonical     # noqa: E402
+from ci.rules.chat_invite import check_chat_invite  # noqa: E402
 from ci.rules.contracts import Finding          # noqa: E402
 from ci.rules.corpus import check_corpus        # noqa: E402
 from ci.rules.hygiene import is_ingested, scan_text  # noqa: E402
@@ -37,6 +38,7 @@ FAMILIES = {
     "links": "every internal reference resolves — backticked paths, markdown links, bare paths",
     "hygiene": "nothing internal, secret or personal reaches a public branch",
     "runbook": "the install runbook's GitHub App step: a deliberate org, a stop before the browser, no skip that does not work",
+    "chat-invite": "the chat-invite config the installer reads: parseable, and an address the CLI would actually open",
 }
 
 
@@ -57,6 +59,7 @@ def run(root: Path, ci_dir: Path) -> list[Finding]:
     findings += check_primitives(root)
     findings += check_links(root)
     findings += check_runbook(root)
+    findings += check_chat_invite(root)
     for rel in text_files(root):
         text = (root / rel).read_text(encoding="utf-8", errors="replace")
         findings += scan_text(text, rel, ingested=is_ingested(rel), docs=is_docs(rel))

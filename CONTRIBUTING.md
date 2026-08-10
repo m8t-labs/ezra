@@ -56,6 +56,7 @@ it finds. Seven families:
 | `links` | Every internal reference resolves. Backticked paths, Markdown links and bare paths all count. |
 | `hygiene` | Nothing internal, secret or personal reaches a public branch. |
 | `runbook` | The install runbook's GitHub App step: a deliberately chosen org, a stop before the browser opens, and no skip path that does not work. |
+| `chat-invite` | `.m8t/chat-invite.json` parses, and — when chat is switched on — names an address the installer would actually open. The CLI reads this file fail-soft, so a typo here switches chat off for every founder with nothing going red. |
 
 Two rules deserve their reasoning stated, because a checker that surprises you is a checker
 you learn to ignore:
