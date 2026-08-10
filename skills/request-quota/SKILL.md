@@ -175,8 +175,8 @@ body: |
   line. Do not block the human ask on the robot form.
 - **No SA on file?** Skip this step. Tell the founder: "I filed the official request. I
   couldn't also email your Microsoft Startup Advisor because I don't have their email — add
-  it via `m8t bootstrap seed-profile` and I'll loop them in next time." Never invent a
-  recipient.
+  it by running `m8t bootstrap profile --advisor-name \"<name>\" --advisor-email <email>` and
+  I'll loop them in next time." Never invent a recipient.
 - **Cold-start:** if the first invocation returns `storage_error` (the op did NOT run),
   retry once before surfacing an error.
 

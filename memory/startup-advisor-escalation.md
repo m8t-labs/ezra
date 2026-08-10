@@ -43,8 +43,10 @@ when the wall is genuinely Microsoft-only.
   email.
 - **Read the SA from `memory/founder.md`; never invent a recipient.** If the SA bullet is
   blank (the founder skipped it at onboarding), say so and degrade — do the part you can
-  (e.g. file the form), and tell the founder to add the SA via `m8t bootstrap seed-profile`
-  so you can loop them in next time.
+  (e.g. file the form), and tell the founder they can add the SA by running
+  `m8t bootstrap profile --advisor-name "<name>" --advisor-email <email>` so you can loop
+  them in next time. (`seed-profile` only re-publishes what has already been collected —
+  it cannot ask for anything, so it can never fill a blank on its own.)
 - The Executor CCs + sets Reply-To to the founder on every send, so the founder stays in the
   loop.
 - **Report only from the proof** in `artifacts/notify/` — never claim "sent" without a

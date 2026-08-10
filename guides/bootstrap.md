@@ -17,7 +17,7 @@ You will be asked to authenticate **once**:
 
 Everything else — the app registration, the installer's identity and its roles, the installer itself — happens automatically under that one sign-in. No further sign-ins, and nothing else to approve.
 
-Step 4b asks you two short questions — the address to reach you on, and your Microsoft startup advisor if you have one — while the install runs in the background. Neither holds the install up.
+Step 4b asks you two short questions — the address to reach you on, and your Microsoft startup advisor if you have one — while the install runs in the background. Neither holds the install up, and both can be answered or corrected later.
 
 ## Steps
 
@@ -210,10 +210,10 @@ m8t bootstrap launch --location <region> --resource-group <rg-name> --reinstall-
 and the two names must match. Requiring it here is deliberate: blind re-entry into a partial install
 is its own class of bug.
 
-### 4b. Your details, and someone to talk to while it installs
+### 4b. Your details
 
-Two questions, then Ezra opens in the browser. Ask the user both — in your own words, but
-ask for exactly these two things — and pass their answers:
+Two questions, while the install runs in the background. Ask the user both — in your own
+words, but ask for exactly these two things — and pass their answers:
 
 1. **The email address to reach them on.** Ezra sends them their copies of its outbound
    mail there — when it emails their startup advisor on their behalf, that address is
@@ -229,16 +229,21 @@ m8t bootstrap profile --founder-email you@example.com --advisor-name "Their Advi
 ```
 
 If they don't have an advisor to hand, drop both advisor flags and pass `--no-advisor`
-instead. Run the command with no flags at all and it will ask you at the terminal.
+instead. Running it in a terminal yourself, with no flags, asks you both questions directly;
+run this way, from an agent, it needs the flags and will say so rather than hanging.
 
-This also opens the hosted Ezra in the browser so they have something to talk to while the
-install runs. It is not their Ezra — theirs arrives with the install, and `m8t open` reaches
-it — so don't offer it as a way to check on install progress; it cannot see the install.
-On a machine with no browser, add `--print` and relay the link.
+**It is safe to re-run at any time**, including after the install finishes if a detail was
+wrong. An answer you don't re-supply is left as it was; `--no-advisor` is the way to remove
+an advisor you recorded earlier.
 
-If chat is unavailable the command says so in one line and carries on. **Nothing in this
-step blocks or fails the install**, and it is safe to re-run at any time — including after
-the install finishes, if a detail was wrong.
+The command may also offer a hosted Ezra to talk to while the wait runs. When it is
+available it prints a link and opens it; when it isn't, it says so in one line and carries
+on. Relay whichever happened — don't promise a browser tab before you've seen the line. That
+Ezra is ours, not theirs: it cannot see their subscription or this install, so it is not a
+way to check progress. Theirs arrives with the install and `m8t open` reaches it. Add
+`--print` on a machine with no browser, or `--no-chat` to skip the offer entirely.
+
+**Nothing in this step blocks or fails the install.**
 
 #### Which model the intake advisor ran on
 
