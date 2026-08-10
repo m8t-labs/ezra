@@ -15,7 +15,9 @@ You will be asked to authenticate **once**:
 
 > **Your workers need a one-time GitHub App approval** (manifest flow, ~1 click; the App is granted access to **all** your repositories by default, so future brains need no re-approval — power users can narrow it to selected repositories later). See step 3b below.
 
-Everything else — the app registration, the installer's identity and its roles, the installer itself — happens automatically under that one sign-in. No further prompts.
+Everything else — the app registration, the installer's identity and its roles, the installer itself — happens automatically under that one sign-in. No further sign-ins, and nothing else to approve.
+
+Step 4b asks you two short questions — the address to reach you on, and your Microsoft startup advisor if you have one — while the install runs in the background. Neither holds the install up, and both can be answered or corrected later.
 
 ## Steps
 
@@ -208,22 +210,54 @@ m8t bootstrap launch --location <region> --resource-group <rg-name> --reinstall-
 and the two names must match. Requiring it here is deliberate: blind re-entry into a partial install
 is its own class of bug.
 
-### 4b. Chat with Ezra while it installs (parallel) — not available today
+### 4b. Your details
 
-This step needs the platform repository, which is not published. Run from this checkout,
-`m8t bootstrap ui` refuses rather than half-running.
+Two questions, while the install runs in the background. Ask the user both — in your own
+words, but ask for exactly these two things — and pass their answers:
 
-Skip it and carry on to step 5. The install completes without it, and you meet Ezra in your
-deployed web app when it finishes — nothing in this step is a prerequisite for anything below.
+1. **The email address to reach them on.** Ezra sends them their copies of its outbound
+   mail there — when it emails their startup advisor on their behalf, that address is
+   copied in and is where replies go. **Ask them; do not read it off their Azure sign-in.**
+   A guest account's sign-in address is frequently not an address they use, and this one
+   has to be right.
+2. **Their Microsoft startup advisor's name and email, if they have one.** This is who
+   Ezra can email for quota and credit requests, and only when asked to. It is genuinely
+   optional — "I don't know" is a normal answer, and they can tell Ezra later.
 
-#### Which model the intake advisor runs on
+```bash
+m8t bootstrap profile --founder-email you@example.com --advisor-name "Their Advisor" --advisor-email advisor@example.com
+```
 
-This describes the parked step above; it is recorded here because the model list is
-generated from the CLI and kept in step with it.
+If they don't have an advisor to hand, drop both advisor flags and pass `--no-advisor`
+instead. Running it in a terminal yourself, with no flags, asks you both questions directly;
+run this way, from an agent, it needs the flags and will say so rather than hanging.
 
-The advisor runs on the best model your subscription can actually deploy. At startup
-the CLI walks an ordered preference list, top to bottom, and stops at the first model
-it can deploy in your region.
+**It is safe to re-run at any time**, including after the install finishes if a detail was
+wrong. An answer you don't re-supply is left as it was; `--no-advisor` is the way to remove
+an advisor you recorded earlier.
+
+The command may also offer a hosted Ezra to talk to while the wait runs. When it is
+available it prints a link and opens it; when it isn't, it says so in one line and carries
+on. Relay whichever happened — don't promise a browser tab before you've seen the line. That
+Ezra is ours, not theirs: it cannot see their subscription or this install, so it is not a
+way to check progress. Theirs arrives with the install and `m8t open` reaches it. Add
+`--print` on a machine with no browser, or `--no-chat` to skip the offer entirely.
+
+**Nothing in this step blocks or fails the install.**
+
+#### Which model the intake advisor ran on
+
+<!-- CLI-rewrite: this whole subsection documents the retired intake advisor. It is kept
+     only because the table is generated from the CLI and held in lockstep by a check
+     there. Remove the section and its check together. -->
+
+The intake advisor this describes has been **retired** — nothing runs this cascade today,
+and step 4b above replaced it. The table is kept, generated from the CLI, until the CLI
+rewrite removes it.
+
+It ran on the best model the subscription could actually deploy. At startup
+the CLI walked an ordered preference list, top to bottom, and stopped at the first model
+it could deploy in the region.
 
 <!-- BEGIN:model-cascade-table -->
 | # | Model | Family | Capacity |
@@ -236,22 +270,22 @@ it can deploy in your region.
 | 6 | `gpt-4.1-mini` | OpenAI | 50 |
 <!-- END:model-cascade-table -->
 
-A model is eligible only if all of the following hold in your region:
+A model was eligible only if all of the following held in the region:
 
-- it appears in the region's Foundry model catalog;
-- it is agent-eligible there (Microsoft's `agentsV2` capability);
-- it offers the Global Standard deployment type;
-- your subscription does not have an explicit zero quota for it.
+- it appeared in the region's Foundry model catalog;
+- it was agent-eligible there (Microsoft's `agentsV2` capability);
+- it offered the Global Standard deployment type;
+- the subscription did not have an explicit zero quota for it.
 
 Models 1-3 are the same generation and Microsoft publishes no ranking between them,
-so their order here is arbitrary - landing on any of the three is the same outcome.
+so their order here is arbitrary - landing on any of the three was the same outcome.
 
-If none of the list can be deployed - or if the check cannot run, for example when
-your account lacks permission to create deployments - the advisor falls back to the
-model named in its own configuration, and it will say it could not check rather than
+If none of the list could be deployed - or if the check could not run, for example when
+the account lacked permission to create deployments - the advisor fell back to the
+model named in its own configuration, and said it could not check rather than
 guess why.
 
-A table row is not a promise: what your subscription can deploy depends on your
+A table row was never a promise: what a subscription can deploy depends on its
 quota, which varies by subscription and region.
 
 ### 5. Watch it to done — this also finishes your local setup
@@ -268,7 +302,7 @@ When it reaches `done`, this same command completes the half of the install that
 
 1. **authorizes sign-in to your webapp** (registers the gateway's redirect URI). Nothing else in the install can do this: the cloud installer runs as a managed identity with no directory rights, and when it started, the gateway's address did not exist yet. Without it the platform serves fine and then refuses every sign-in with `AADSTS50011`.
 2. writes the repo-root marker and points your local tools at the gateway;
-3. **seeds your advisor's brain** with your company profile from the onboarding intake, so your brain-backed advisor starts already knowing your company. Three cases: you finished the intake → it seeds inline; you skipped it → no-op; you're still filling it in → it leaves a background watcher that seeds once you finish.
+3. **tells your advisors how to reach you** — the details you confirmed in step 4b go into your brain-backed advisor's memory, so it knows the address to copy you on and who it may escalate to. Two cases: you ran step 4b → it lands here; you skipped it → it says so and names the command, and you can run `m8t bootstrap profile` any time afterwards.
 4. **puts your mates on your desktop** — a small always-on-top window per mate at the edge of the screen, each with a one-message composer. They are their own software with their own version; this fetches the build your platform release names and verifies it before installing. It runs last and announces itself first, because it is the one step that downloads ~120 MB — on a slow link, minutes with nothing else to show. Four ways it can end, and it **says which of these happened**, every time it runs: installed; the release you are on carries no companions; this host has no build (there is no Linux one); or it needs `m8t companion repair`. The platform is live and unaffected in all four. (It does not run at all if step 2 could not point your tools at the gateway — the companions need one to talk to, and that failure is reported above it.) See [`install/companion.md`](install/companion.md).
 5. prints the optional local-tooling pointers + fresh-session guidance.
 
