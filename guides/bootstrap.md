@@ -217,9 +217,9 @@ words, but ask for exactly these two things — and pass their answers:
 
 1. **The email address to reach them on.** Ezra sends them their copies of its outbound
    mail there — when it emails their startup advisor on their behalf, that address is
-   copied in and is where replies go. Their Azure sign-in is offered as the default; have
-   them confirm it rather than assuming, because a guest account's sign-in address is
-   often not the address they actually use.
+   copied in and is where replies go. **Ask them; do not read it off their Azure sign-in.**
+   A guest account's sign-in address is frequently not an address they use, and this one
+   has to be right.
 2. **Their Microsoft startup advisor's name and email, if they have one.** This is who
    Ezra can email for quota and credit requests, and only when asked to. It is genuinely
    optional — "I don't know" is a normal answer, and they can tell Ezra later.
