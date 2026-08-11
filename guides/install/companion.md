@@ -45,6 +45,9 @@ web.
 live, on macOS and Windows alike. Nothing else is needed and there is nothing to
 download by hand.
 
+The build is about 120 MB, so allow several minutes on a slow link. An
+interrupted download picks up where it stopped rather than starting over.
+
 To put them on a machine on their own — a second workstation, or one where you
 skipped them earlier:
 
