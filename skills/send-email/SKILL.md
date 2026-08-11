@@ -107,10 +107,15 @@ revealed. So: put hidden recipients in `bcc` and nowhere else, never name them i
 and never repeat them back in a reply the To or CC recipients could see. If the founder
 seems to be putting someone in `cc` who they described as hidden, ask before sending.
 
-Only `to` and the founder's email are required. **`subject` and `body` are the founder's
-call** — an email with an empty subject, an empty body, or both is a real thing to want,
-and you should send it if that is what they asked for. Say what you're about to do first,
-though: *"That'll go out with no subject line — want one?"* Ask once, then send.
+**A subject and a body are both required.** If the founder hasn't given you either, write
+one and show it to them — don't send an empty one and don't send without asking. A
+subject-less message from a no-reply address reads as spam to most filters, and an empty
+body is nearly always a mistake.
+
+The Executor refuses a send with either missing. That refusal is deliberate: it cannot ask
+you a question mid-task, so refusing is the only way it can make you check. If you get
+`missing: Body` back, look at your block before you look at the founder — the usual cause
+is `body: |` not being last, which swallows the lines after it.
 
 Use `founder_email` exactly as written. The contract's canonical name for it is
 `owner_email` — it is the install owner's address, whatever their title — and both names
