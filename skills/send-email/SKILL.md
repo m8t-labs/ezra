@@ -86,8 +86,8 @@ Field names and the full contract: `references/notify-advisor-contract.md`.
 ```
 <m8t:notify_advisor>
 to: <the recipient>
-owner_email: <the founder's own email from memory/founder.md — always CC'd>
-reply_to: <where replies go; omit to default to owner_email>
+founder_email: <the founder's own email from memory/founder.md — always CC'd>
+reply_to: <where replies go; omit to default to founder_email>
 from_label: <founder name> via their Azure agent
 subject: <clean subject — strip any RE:/FWD:>
 body: |
@@ -95,6 +95,11 @@ body: |
 mode: submit
 </m8t:notify_advisor>
 ```
+
+Use `founder_email` exactly as written. The contract's canonical name for it is
+`owner_email` — it is the install owner's address, whatever their title — and both names
+work, but only `founder_email` is understood by every Executor currently deployed. Emitting
+the newer name against an older Executor silently empties the field.
 
 Call `invoke_worker(target:"ezra-executor", …)` with that block as the task text, and pass
 `deliver_to:{pathPrefix:"artifacts/notify/"}` as a **tool argument** — the repo is always
@@ -115,6 +120,11 @@ Read the proof back from `artifacts/notify/` with `get_file_contents`.
 
 If the proof names an **unrecognised field**, you got a field name wrong. Fix the name and
 retry. Do not report the address as missing — the founder gave it to you.
+
+**Read Reply-To off the proof, not off what you intended.** If the proof's Reply-To is not
+the address you confirmed with the founder, say so — an Executor that did not understand
+the field is exactly the case where the founder would otherwise be told replies go somewhere
+they don't.
 
 Never claim "sent" unless the proof records it.
 
