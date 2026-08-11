@@ -85,8 +85,9 @@ Field names and the full contract: `references/notify-advisor-contract.md`.
 
 ```
 <m8t:notify_advisor>
-to: <the recipient>
+to: <the recipient, or several separated by commas>
 founder_email: <the founder's own email from memory/founder.md — always CC'd>
+cc: <anyone else to copy, separated by commas; omit if none>
 reply_to: <where replies go; omit to default to founder_email>
 from_label: <founder name> via their Azure agent
 subject: <clean subject — strip any RE:/FWD:>
@@ -96,10 +97,26 @@ mode: submit
 </m8t:notify_advisor>
 ```
 
+`to` and `cc` each take several addresses separated by commas. The founder is added to CC
+on top of whatever you put there — putting your own `cc` never removes their copy, and
+listing them twice doesn't send it twice.
+
 Use `founder_email` exactly as written. The contract's canonical name for it is
 `owner_email` — it is the install owner's address, whatever their title — and both names
 work, but only `founder_email` is understood by every Executor currently deployed. Emitting
 the newer name against an older Executor silently empties the field.
+
+`cc`, and more than one address in `to`, need a recent Executor. On an older one:
+
+- `cc` is dropped silently and only the founder is copied.
+- Several addresses in `to` are passed on as a **single** malformed address, so the send
+  **fails** rather than reaching anyone.
+
+So: read the recipients back off the proof (step 5). **If the proof's To or CC is missing
+someone the founder asked for, say so** — never report a send as done when it reached fewer
+people than they named. And if a send with several `to` addresses comes back `failed`, that
+is the likely reason: say the Executor on this deployment can't do multiple recipients yet,
+and offer to send them one at a time.
 
 Call `invoke_worker(target:"ezra-executor", …)` with that block as the task text, and pass
 `deliver_to:{pathPrefix:"artifacts/notify/"}` as a **tool argument** — the repo is always
