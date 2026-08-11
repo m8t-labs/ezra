@@ -88,6 +88,7 @@ Field names and the full contract: `references/notify-advisor-contract.md`.
 to: <the recipient, or several separated by commas>
 founder_email: <the founder's own email from memory/founder.md — always CC'd>
 cc: <anyone else to copy, separated by commas; omit if none>
+bcc: <hidden recipients, separated by commas; omit if none>
 reply_to: <where replies go; omit to default to founder_email>
 from_label: <founder name> via their Azure agent
 subject: <clean subject — strip any RE:/FWD:>
@@ -97,18 +98,30 @@ mode: submit
 </m8t:notify_advisor>
 ```
 
-`to` and `cc` each take several addresses separated by commas. The founder is added to CC
-on top of whatever you put there — putting your own `cc` never removes their copy, and
-listing them twice doesn't send it twice.
+`to`, `cc` and `bcc` each take several addresses separated by commas. The founder is added
+to CC on top of whatever you put there — supplying your own `cc` never removes their copy,
+and listing someone twice doesn't send it twice.
+
+**BCC is the one field where a slip cannot be undone.** A hidden recipient revealed stays
+revealed. So: put hidden recipients in `bcc` and nowhere else, never name them in the body,
+and never repeat them back in a reply the To or CC recipients could see. If the founder
+seems to be putting someone in `cc` who they described as hidden, ask before sending.
+
+Only `to` and the founder's email are required. **`subject` and `body` are the founder's
+call** — an email with an empty subject, an empty body, or both is a real thing to want,
+and you should send it if that is what they asked for. Say what you're about to do first,
+though: *"That'll go out with no subject line — want one?"* Ask once, then send.
 
 Use `founder_email` exactly as written. The contract's canonical name for it is
 `owner_email` — it is the install owner's address, whatever their title — and both names
 work, but only `founder_email` is understood by every Executor currently deployed. Emitting
 the newer name against an older Executor silently empties the field.
 
-`cc`, and more than one address in `to`, need a recent Executor. On an older one:
+`cc`, `bcc`, and more than one address in `to`, need a recent Executor. On an older one:
 
-- `cc` is dropped silently and only the founder is copied.
+- `cc` and `bcc` are dropped silently and only the founder is copied. **A dropped `bcc`
+  means the hidden recipient simply never receives it** — nothing is exposed, but nothing
+  arrives either, so never tell the founder a blind copy went out without checking.
 - Several addresses in `to` are passed on as a **single** malformed address, so the send
   **fails** rather than reaching anyone.
 
@@ -122,10 +135,10 @@ Call `invoke_worker(target:"ezra-executor", …)` with that block as the task te
 `deliver_to:{pathPrefix:"artifacts/notify/"}` as a **tool argument** — the repo is always
 your brain.
 
-**Fill every required field: `to`, `owner_email`, `subject`, `body`.** The Executor reads
-the block as-is. It cannot ask you a follow-up question and it will not look anything up.
-A blank field is a failed send — and the failure reads as though the founder forgot
-something, when they didn't. If you're missing a value, go back to step 1 and ask.
+**Fill both required fields: `to` and `founder_email`.** The Executor reads the block
+as-is. It cannot ask you a follow-up question and it will not look anything up. A blank
+one is a failed send — and the failure reads as though the founder forgot something, when
+they didn't. If you're missing either value, go back to step 1 and ask.
 
 ## Step 5 — report from the proof
 
@@ -150,4 +163,5 @@ Never claim "sent" unless the proof records it.
 - Never invent an address.
 - Never emit the block with a required field blank.
 - Never send without a reply address on file.
+- Never reveal a BCC recipient to anyone on the To or CC lines.
 - Never substitute a different recipient because one was easier to find in memory.
