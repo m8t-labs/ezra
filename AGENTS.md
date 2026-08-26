@@ -45,9 +45,12 @@ tags: [tag-a, tag-b]
 Optional keys (additive contract — consumers must tolerate their absence):
 
 ```yaml
-origin: worker          # worker | operator | dream — provenance tier. ABSENT ⇒ worker.
+origin: worker          # worker | operator | dream | taught — provenance tier. ABSENT ⇒ worker.
                         # operator = seeded/hand-curated (automated writers: flag-only, never edit)
                         # dream = written by the dreamer (carries source conversation refs)
+                        # taught = introduced by a confirmed teaching episode and human-reviewed PR
+teaching_episode: teach_<id>     # required with origin: taught; the teaching episode that produced it
+teaching_evidence: [msg_<id>]    # required with origin: taught; stable primary evidence items
 source: <surface/conversation that produced it>
 links: [<related brain files>]
 supersedes: memory/<old-file>.md        # on a replacement file: what it replaces
@@ -67,7 +70,7 @@ quarantine_evidence: "evidence + conv_ refs"       # quarantine/ files only
   2. the OLD file edited to add `superseded_by: <new-path>` (content retained — never delete);
   3. `memory/MEMORY.md`: old line removed, new line prepended.
 - **Retract** (the record was wrong; nothing replaces it) — edit the file in place to add `retracted:` + `retraction_evidence:`, and remove its line from `MEMORY.md`. The file is de-indexed, not moved or deleted.
-- **Tiering:** automated writers (dreamer, librarian) apply verbs only to `worker`/`dream`-origin files. `operator`-origin content (including seeds) is **flag-only** — surface the tension to a human; never edit, supersede, or retract it.
+- **Tiering:** automated writers (dreamer, librarian) apply verbs only to `worker`/`dream`-origin files. `operator`- and `taught`-origin content (including seeds) is **flag-only** — surface the tension to a human; never edit, supersede, or retract it. A teaching proposal may draft a repair in a side-branch PR; only human merge grants that repair authority.
 
 ## Do-not-capture (memory write discipline)
 
