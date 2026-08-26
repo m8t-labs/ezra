@@ -14,6 +14,8 @@ processes:
   costReport:
     enabled: true
     cadenceDays: 14
+  teaching:
+    enabled: false
 
 # ── MIRROR — link record convenience copy. NOT the source of truth —
 # the Foundry agent's metadata.brain is. Rewritten by `m8t brain link`.
