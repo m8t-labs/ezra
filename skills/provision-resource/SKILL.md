@@ -2,7 +2,7 @@
 type: skill
 title: "Provision resource — Tier-1 delegation play"
 created: 2026-06-07T00:00:00Z
-updated: 2026-06-07T00:00:00Z
+updated: 2026-08-30T23:59:15Z
 tags: [azure, provisioning, delegation, executor, tier-1]
 origin: operator
 ---
@@ -26,7 +26,7 @@ Read `memory/founder.md`. Confirm:
 
 ### 2. Ground the right resource
 
-Match the founder's intent to the routing table in `persona.md` and ground the specific resource type + configuration options via the Microsoft Learn MCP:
+Match the founder's intent to the routing table in `references/azure-skills/_index.md` and ground the specific resource type + configuration options via the Microsoft Learn MCP:
 - `microsoft_docs_search` → `microsoft_docs_fetch` for the definitive API shape.
 - For storage: ground against `microsoft/azure-skills · azure-storage`.
 - For identity / Key Vault: ground against `microsoft/azure-skills · azure-rbac` + `entra-app-registration`.
