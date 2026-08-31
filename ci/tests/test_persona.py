@@ -148,6 +148,47 @@ def test_a_persona_declaring_no_tools_is_accepted(tmp_path):
     assert codes(tmp_path, GOOD) == set()
 
 
+WITH_INSTALL_OFFER = WITH_TOOLS.replace(
+    "      - type: web_search_preview\n",
+    "      - type: web_search_preview\n"
+    "      - type: function\n"
+    "        name: present_install_offer\n"
+    "        description: Contextual offer.\n"
+    "        parameters: { type: object }\n",
+).replace(
+    "## Your brain\n",
+    "<!-- m8t:install-offer:start -->\n"
+    "Only on the public deployment.\n"
+    "<!-- m8t:install-offer:end -->\n\n"
+    "## Your brain\n",
+)
+
+
+def test_an_install_offer_tool_with_one_policy_block_is_accepted(tmp_path):
+    assert codes(tmp_path, WITH_INSTALL_OFFER) == set()
+
+
+def test_an_install_offer_tool_without_its_policy_block_is_refused(tmp_path):
+    stripped = WITH_INSTALL_OFFER.replace(
+        "<!-- m8t:install-offer:start -->\n"
+        "Only on the public deployment.\n"
+        "<!-- m8t:install-offer:end -->\n\n",
+        "",
+    )
+    assert "persona.install_offer_policy.markers" in codes(tmp_path, stripped)
+
+
+def test_a_duplicated_install_offer_policy_block_is_refused(tmp_path):
+    doubled = WITH_INSTALL_OFFER.replace(
+        "<!-- m8t:install-offer:end -->",
+        "<!-- m8t:install-offer:end -->\n"
+        "<!-- m8t:install-offer:start -->\n"
+        "duplicate\n"
+        "<!-- m8t:install-offer:end -->",
+    )
+    assert "persona.install_offer_policy.markers" in codes(tmp_path, doubled)
+
+
 def test_a_list_of_tool_names_is_refused(tmp_path):
     """The shape a contributor reaches for first. It parses, it forwards, and nothing
     downstream can match a bare string to a deployed tool."""

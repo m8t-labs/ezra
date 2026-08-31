@@ -21,6 +21,8 @@ REQUIRED_FIELDS = ("name", "role", "description", "version")
 _VERSION_RE = re.compile(r"^\d+\.\d+$")
 _POLICY_START = "<!-- m8t:decision-policy:start -->"
 _POLICY_END = "<!-- m8t:decision-policy:end -->"
+_INSTALL_OFFER_START = "<!-- m8t:install-offer:start -->"
+_INSTALL_OFFER_END = "<!-- m8t:install-offer:end -->"
 
 
 def _check_foundry_tools(fm: dict) -> list[Finding]:
@@ -108,6 +110,18 @@ def _tool_identity(tool: dict) -> str | None:
     return kind if isinstance(kind, str) else None
 
 
+def _has_foundry_function(fm: dict, name: str) -> bool:
+    targets = fm.get("targets")
+    foundry = targets.get("foundry") if isinstance(targets, dict) else None
+    tools = foundry.get("tools") if isinstance(foundry, dict) else None
+    return isinstance(tools, list) and any(
+        isinstance(tool, dict)
+        and tool.get("type") == "function"
+        and tool.get("name") == name
+        for tool in tools
+    )
+
+
 _NUMERIC_KEYS = ("maxLength", "minLength", "minItems", "maxItems", "minimum", "maximum")
 
 
@@ -180,6 +194,16 @@ def check_persona(root: Path, expected_persona: str, voice_golden: str,
             "the m8t:decision-policy block must appear exactly once, with both markers. "
             "It governs the present_decision tool the deployed agent holds.",
             PERSONA_PATH))
+
+    if _has_foundry_function(fm, "present_install_offer"):
+        starts = text.count(_INSTALL_OFFER_START)
+        ends = text.count(_INSTALL_OFFER_END)
+        if starts != 1 or ends != 1:
+            f.append(Finding(
+                "persona.install_offer_policy.markers",
+                "the m8t:install-offer block must appear exactly once, with both markers. "
+                "It governs the present_install_offer tool the deployed agent holds.",
+                PERSONA_PATH))
 
     f += _check_foundry_tools(fm)
 
