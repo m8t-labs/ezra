@@ -1,6 +1,6 @@
 # `uninstall/web-install-teardown.md`: tear down an install made from the web page
 
-> 🤖 **Agent runbook.** Use this if you installed from the install page in your browser (`m8t.run/ezra/install` or `wazari.ai/ezra/install`). That install put the platform in its **own resource group**; the done screen names it. Every step that deletes or changes something is gated on an explicit operator confirmation, default **No**, and re-checks its condition in the command itself. Steps 1 and 2 only read.
+> 🤖 **Agent runbook.** Use this if you installed from the install page in your browser (`m8t.run/ezra/install` or `wazari.ai/ezra/install`). That install put the platform in its **own resource group**; the done screen names it. Every step that deletes or changes something is gated on an explicit operator confirmation, default **No**. Steps 1 and 2 change nothing in Azure; step 1 writes local state.
 >
 > **Needs:** `az`, signed in to the subscription, and `jq`. The commands work in bash and zsh.
 >
@@ -17,7 +17,7 @@ Deleting the resource group removes everything inside it. These objects live out
 | The gateway identity's two subscription-scope reader roles | Your subscription | 3 |
 | The installer identity's subscription-scope Owner role, if the install did not remove it | Your subscription | 3 |
 | The platform's sign-in app registration, with the platform's address as a redirect URI | Your Entra directory | 4 |
-| Foundry's `…-AgentIdentityBlueprint` app registrations: one for the Foundry project and one per agent (three on a new install we measured) | Your Entra directory | 5 |
+| Foundry's `…-AgentIdentityBlueprint` app registrations: one for the Foundry project and one per agent, so about three on a new install | Your Entra directory | 5 |
 | The soft-deleted Foundry account's quota hold | Your subscription | 7 |
 
 Your GitHub App and brain repo are your data and are left in place (see the end).
@@ -25,7 +25,7 @@ Your GitHub App and brain repo are your data and are left in place (see the end)
 ## 1. Identify the install and save what you find (read-only)
 
 ```bash
-RG=<install-rg>                  # the name on the install page's done screen
+RG='<install-rg>'                  # the name on the install page's done screen
 STATE="$HOME/.m8t/teardown-$RG"; mkdir -p "$STATE"; rm -f "$STATE/roles-decided"
 SUB=$(az account show --query id -o tsv)
 ACCT=$(az cognitiveservices account list -g "$RG" --query "[?kind=='AIServices'].name | [0]" -o tsv)
@@ -59,7 +59,7 @@ Otherwise stop.
 ## 2. List what those identities hold at subscription scope (read-only)
 
 ```bash
-RG=<install-rg>; STATE="$HOME/.m8t/teardown-$RG"; . "$STATE/env"; : "${SUB:?}"
+RG='<install-rg>'; STATE="$HOME/.m8t/teardown-$RG"; . "$STATE/env"; : "${SUB:?}"
 while IFS= read -r P; do
   az role assignment list --all --assignee-object-id "$P" \
     --query "[?scope=='/subscriptions/$SUB'].{role:roleDefinitionName,description:description,id:id}" -o tsv
@@ -75,7 +75,7 @@ You should see two lines for the gateway, **Cost Management Reader** and **Monit
 On yes:
 
 ```bash
-RG=<install-rg>; STATE="$HOME/.m8t/teardown-$RG"; . "$STATE/env"; : "${SUB:?}"
+RG='<install-rg>'; STATE="$HOME/.m8t/teardown-$RG"; . "$STATE/env"; : "${SUB:?}"
 while IFS= read -r P; do
   az role assignment list --all --assignee-object-id "$P" \
     --query "[?scope=='/subscriptions/$SUB'].id" -o tsv \
@@ -88,7 +88,7 @@ done < "$STATE/principals"
 Then, whatever the answer, record that the roles were decided. Step 6 refuses to delete the group without this file.
 
 ```bash
-RG=<install-rg>; touch "$HOME/.m8t/teardown-$RG/roles-decided"
+RG='<install-rg>'; touch "$HOME/.m8t/teardown-$RG/roles-decided"
 ```
 
 ## 4. The platform's sign-in app registration
@@ -96,7 +96,7 @@ RG=<install-rg>; touch "$HOME/.m8t/teardown-$RG/roles-decided"
 The app registration is deleted only if the install page created it (`m8t-install-created` tag) **and** it holds no redirect URI but this platform's. Otherwise another platform, a developer, or an older version of the install page may depend on it, so only this platform's address is removed (4b).
 
 ```bash
-RG=<install-rg>; STATE="$HOME/.m8t/teardown-$RG"; . "$STATE/env"; : "${APP_ID:?}" "${FQDN:?}"
+RG='<install-rg>'; STATE="$HOME/.m8t/teardown-$RG"; . "$STATE/env"; : "${APP_ID:?}" "${FQDN:?}"
 az ad app show --id "$APP_ID" --query "{name:displayName, tags:tags, redirects:spa.redirectUris}" -o json
 TAGGED=$(az ad app show --id "$APP_ID" --query "contains(tags || \`[]\`, 'm8t-install-created')" -o tsv)
 OTHERS=$(az ad app show --id "$APP_ID" --query spa.redirectUris -o json \
@@ -110,7 +110,7 @@ echo "tagged=$TAGGED  other redirect URIs=$OTHERS"
 **[PAUSE — operator]** *"Delete the app registration `$APP_ID`, which only this platform uses? (default: No)"*
 
 ```bash
-RG=<install-rg>; STATE="$HOME/.m8t/teardown-$RG"; . "$STATE/env"; : "${APP_ID:?}" "${FQDN:?}"
+RG='<install-rg>'; STATE="$HOME/.m8t/teardown-$RG"; . "$STATE/env"; : "${APP_ID:?}" "${FQDN:?}"
 TAGGED=$(az ad app show --id "$APP_ID" --query "contains(tags || \`[]\`, 'm8t-install-created')" -o tsv)
 OTHERS=$(az ad app show --id "$APP_ID" --query spa.redirectUris -o json \
   | jq -c --arg u "https://$FQDN" '. - [$u, $u + "/"]')
@@ -125,7 +125,7 @@ fi
 The app registration can be restored within 30 days ([Microsoft Learn](https://learn.microsoft.com/entra/identity-platform/howto-restore-app)). Restoring an application does not restore its service principal ([Microsoft Learn](https://learn.microsoft.com/powershell/module/microsoft.entra.directorymanagement/restore-entradeleteddirectoryobject)), so restore both:
 
 ```bash
-RG=<install-rg>; . "$HOME/.m8t/teardown-$RG/env"; : "${APP_OBJ:?}" "${SP_OBJ:?}"
+RG='<install-rg>'; . "$HOME/.m8t/teardown-$RG/env"; : "${APP_OBJ:?}" "${SP_OBJ:?}"
 az rest --method POST --url "https://graph.microsoft.com/v1.0/directory/deletedItems/$APP_OBJ/restore"
 az rest --method POST --url "https://graph.microsoft.com/v1.0/directory/deletedItems/$SP_OBJ/restore"
 ```
@@ -135,7 +135,7 @@ az rest --method POST --url "https://graph.microsoft.com/v1.0/directory/deletedI
 **[PAUSE — operator]** Show the `other redirect URIs` list from step 4. *"Remove `https://$FQDN` from the sign-in redirect URIs of `$APP_ID`, keeping the ones listed? (default: No)"*
 
 ```bash
-RG=<install-rg>; STATE="$HOME/.m8t/teardown-$RG"; . "$STATE/env"; : "${APP_ID:?}" "${APP_OBJ:?}" "${FQDN:?}"
+RG='<install-rg>'; STATE="$HOME/.m8t/teardown-$RG"; . "$STATE/env"; : "${APP_ID:?}" "${APP_OBJ:?}" "${FQDN:?}"
 OTHERS=$(az ad app show --id "$APP_ID" --query spa.redirectUris -o json \
   | jq -c --arg u "https://$FQDN" '. - [$u, $u + "/"]')
 : "${OTHERS:?}"
@@ -149,7 +149,7 @@ az ad app show --id "$APP_ID" --query spa.redirectUris -o json
 They are named `<Foundry account>-<project>-…-AgentIdentityBlueprint`.
 
 ```bash
-RG=<install-rg>; STATE="$HOME/.m8t/teardown-$RG"; . "$STATE/env"; : "${ACCT:?}"
+RG='<install-rg>'; STATE="$HOME/.m8t/teardown-$RG"; . "$STATE/env"; : "${ACCT:?}"
 az ad app list --filter "startswith(displayName,'$ACCT-')" \
   --query "[?ends_with(displayName,'-AgentIdentityBlueprint')].[displayName,id]" -o tsv \
   > "$STATE/blueprints"
@@ -159,24 +159,24 @@ cat "$STATE/blueprints"; echo "count: $(wc -l < "$STATE/blueprints")"
 **[PAUSE — operator]** Check that every name starts with `$ACCT-`. *"Delete these blueprint app registrations? (default: No)"*
 
 ```bash
-RG=<install-rg>; STATE="$HOME/.m8t/teardown-$RG"; [ -s "$STATE/blueprints" ] || { echo "run the listing first"; false; } &&
+RG='<install-rg>'; STATE="$HOME/.m8t/teardown-$RG"; [ -s "$STATE/blueprints" ] || { echo "run the listing first"; false; } &&
 cut -f2 "$STATE/blueprints" | while IFS= read -r id; do az ad app delete --id "$id"; done
 ```
 
 **Who can delete these:**
 - **Global Administrator** can.
-- **Application Administrator** is refused; we measured that refusal.
-- Microsoft's documentation also names the blueprint's owner, the *Agent ID Administrator* role and the *Cloud Application Administrator* role. We have not tested these.
+- **Application Administrator** was refused when we tried it.
+- Per [Microsoft Learn](https://learn.microsoft.com/entra/agent-id/howto-delete-agent-identity), *Cloud Application Administrator* can delete them, and an owner needs no role. We have not tried either.
 - Each blueprint's owner is a service principal, not you (measured).
 
-Deleting a blueprint also soft-deletes its agent identities, in the background ([Microsoft Learn](https://learn.microsoft.com/entra/agent-id/concept-agent-identity-deletion)). A blueprint can be restored within 30 days with the command in 4a, using its id from `$STATE/blueprints`. Agent identities already cleaned up must each be restored separately.
+Deleting a blueprint also soft-deletes its agent identities, in the background ([Microsoft Learn](https://learn.microsoft.com/entra/agent-id/concept-agent-identity-deletion)). A blueprint can be restored within 30 days from the Entra admin center: **Entra ID → App registrations → Deleted applications → Restore app registration**. Restoring it there also restores its service principal ([Microsoft Learn](https://learn.microsoft.com/entra/identity/enterprise-apps/restore-application)). Agent identities that the background cleanup already removed must each be restored separately.
 
 ## 6. Delete the resource group
 
 **[PAUSE — operator]** *"Delete the entire resource group `$RG` and everything in it? (default: No)"*
 
 ```bash
-RG=<install-rg>; STATE="$HOME/.m8t/teardown-$RG"
+RG='<install-rg>'; STATE="$HOME/.m8t/teardown-$RG"
 if [ -f "$STATE/roles-decided" ] && [ "$STATE/roles-decided" -nt "$STATE/env" ]; then
   az group delete -n "$RG" --yes
 else
@@ -191,14 +191,14 @@ The reason is in [`bootstrap-teardown.md`](bootstrap-teardown.md) step 5: an unp
 **[PAUSE — operator]** *"Purge the deleted Foundry account `$ACCT`? It cannot be recovered afterwards. (default: No)"*
 
 ```bash
-RG=<install-rg>; . "$HOME/.m8t/teardown-$RG/env"; : "${ACCT:?}" "${REGION:?}"
+RG='<install-rg>'; . "$HOME/.m8t/teardown-$RG/env"; : "${ACCT:?}" "${REGION:?}"
 az cognitiveservices account purge -n "$ACCT" -g "$RG" -l "$REGION"
 ```
 
 ## 8. Verify
 
 ```bash
-RG=<install-rg>; STATE="$HOME/.m8t/teardown-$RG"; . "$STATE/env"; : "${SUB:?}" "${ACCT:?}" "${APP_ID:?}"
+RG='<install-rg>'; STATE="$HOME/.m8t/teardown-$RG"; . "$STATE/env"; : "${SUB:?}" "${ACCT:?}" "${APP_ID:?}"
 az group exists -n "$RG"                                                             # expect false
 while IFS= read -r P; do
   az role assignment list --all --assignee-object-id "$P" --query "[?scope=='/subscriptions/$SUB'].id" -o tsv
@@ -211,44 +211,50 @@ az cognitiveservices account list-deleted --query "length([?name=='$ACCT'])" -o 
 
 ## If the resource group is already deleted
 
-The group's identities can no longer be looked up, so this finds what is left by what it carries. First, list:
+The group's identities can no longer be looked up, so this finds what is left by what it carries. It only lists; the deletes are the gated steps above, or the gated block at the end.
 
 ```bash
-RG=<install-rg>; STATE="$HOME/.m8t/teardown-$RG"; mkdir -p "$STATE"
+RG='<install-rg>'; STATE="$HOME/.m8t/teardown-$RG"; mkdir -p "$STATE"
 SUB=$(az account show --query id -o tsv)
 echo "## the Foundry account, if still soft-deleted (its id contains /resourceGroups/<group>/)"
 az cognitiveservices account list-deleted -o json \
   | jq -r --arg rg "/resourcegroups/$RG/" '.[] | select(.id | ascii_downcase | contains($rg | ascii_downcase)) | "\(.name) \(.location)"'
 echo "## the sign-in app registration, if the install page created it"
-az ad app list --filter "displayName eq 'm8t-install-$RG'" --query "[].{appId:appId,id:id,redirects:spa.redirectUris}" -o json
-echo "## subscription-scope install roles whose principal no longer exists"
+az ad app list --filter "displayName eq 'm8t-install-$RG'" --query "[].{appId:appId,id:id,tags:tags,redirects:spa.redirectUris}" -o json
+echo "## subscription-scope install roles whose principal lookup came back empty"
 az role assignment list --all \
   --query "[?scope=='/subscriptions/$SUB' && (description=='m8t-gateway auto-reap (bootstrap)' || description=='m8t-installer auto-reap (bootstrap)') && principalName==''].{role:roleDefinitionName,principal:principalId,id:id}" -o table
 ```
 
-Then:
+**Foundry account and app registration.** Add what the listing found to the state file, then run the matching steps above:
+- step 5 for the blueprints, which needs `ACCT`;
+- step 7 for the purge, which needs `ACCT` and `REGION`;
+- step 4 for the app registration, which needs `APP_ID`, `APP_OBJ`, and `FQDN`, your platform's address from the done screen without `https://`.
 
-- **Foundry account, and blueprints:** write what the listing found into the state file, then run steps 5 and 7. If the account has already been purged but you know its name, set `ACCT` to it and run step 5.
+Step 4 deletes only when the app registration carries the install tag and holds no other address. Each line appends, so a value saved earlier by step 1 is kept unless you set it again:
 
-  ```bash
-  RG=<install-rg>; printf "RG='%s'\nACCT='%s'\nREGION='%s'\n" "$RG" <account-name> <location> > "$HOME/.m8t/teardown-$RG/env"
-  ```
+```bash
+RG='<install-rg>'; E="$HOME/.m8t/teardown-$RG/env"
+echo "RG='$RG'" >> "$E"
+echo "ACCT='<account-name>'" >> "$E"; echo "REGION='<location>'" >> "$E"
+echo "APP_ID='<appId>'" >> "$E"; echo "APP_OBJ='<id>'" >> "$E"; echo "FQDN='<platform-host>'" >> "$E"
+```
 
-- **Sign-in app registration:** if one is listed, delete it with `az ad app delete --id <appId>` only if its redirect URIs hold nothing but this platform's address. Otherwise leave it.
-- **Roles:**
-  - `principalName` is empty only when az looked the principal up and found nothing. Before deleting a role, confirm its principal is gone:
+**Roles.** A role listed has an empty `principalName`, which az sets when it looked the principal up and found nothing.
 
-    ```bash
-    az ad sp show --id <principal> 2>&1 | grep -q "does not exist" && echo gone
-    ```
+**[PAUSE — operator]** *"Delete the role `<id>` held by the deleted principal `<principal>`? (default: No)"* For each role, on yes:
 
-  - Only on `gone`:
+```bash
+P='<principal>'; ID='<id>'
+if [ "$(az role assignment list --all --query "[?id=='$ID'].principalId | [0]" -o tsv)" = "$P" ] \
+   && az ad sp show --id "$P" 2>&1 | grep -q "does not exist"; then
+  az rest --method delete --url "https://management.azure.com${ID}?api-version=2022-04-01"
+else
+  echo "REFUSED: the role is not held by that principal, or the principal still exists"
+fi
+```
 
-    ```bash
-    az rest --method delete --url "https://management.azure.com<id>?api-version=2022-04-01"
-    ```
-
-  - Roles left by other deleted installs match too, and they are just as orphaned.
+Roles left by other deleted installs match too, and they are just as orphaned.
 
 ## GitHub App and brain repo (your data, left in place)
 
