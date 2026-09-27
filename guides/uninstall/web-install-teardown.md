@@ -22,7 +22,7 @@ Deleting the resource group removes everything inside it. These objects live out
 
 Your GitHub App and brain repo are your data and are left in place (see the end).
 
-## 1. Identify the install and save what you find (read-only)
+## 1. Identify the install and save what you find (changes nothing in Azure)
 
 ```bash
 RG='<install-rg>'                  # the name on the install page's done screen
@@ -151,7 +151,7 @@ They are named `<Foundry account>-<project>-…-AgentIdentityBlueprint`.
 ```bash
 RG='<install-rg>'; STATE="$HOME/.m8t/teardown-$RG"; . "$STATE/env"; : "${ACCT:?}"
 az ad app list --filter "startswith(displayName,'$ACCT-')" \
-  --query "[?ends_with(displayName,'-AgentIdentityBlueprint')].[displayName,id]" -o tsv \
+  --query "[?ends_with(displayName,'-AgentIdentityBlueprint')].[displayName,id,appId]" -o tsv \
   > "$STATE/blueprints"
 cat "$STATE/blueprints"; echo "count: $(wc -l < "$STATE/blueprints")"
 ```
@@ -166,10 +166,21 @@ cut -f2 "$STATE/blueprints" | while IFS= read -r id; do az ad app delete --id "$
 **Who can delete these:**
 - **Global Administrator** can.
 - **Application Administrator** was refused when we tried it.
-- Per [Microsoft Learn](https://learn.microsoft.com/entra/agent-id/howto-delete-agent-identity), *Cloud Application Administrator* can delete them, and an owner needs no role. We have not tried either.
+- [Microsoft Learn](https://learn.microsoft.com/entra/agent-id/howto-delete-agent-identity) names *Agent ID Administrator* and *Cloud Application Administrator* for managing and deleting agent identity objects. We have not tried either.
 - Each blueprint's owner is a service principal, not you (measured).
 
-Deleting a blueprint also soft-deletes its agent identities, in the background ([Microsoft Learn](https://learn.microsoft.com/entra/agent-id/concept-agent-identity-deletion)). A blueprint can be restored within 30 days from the Entra admin center: **Entra ID → App registrations → Deleted applications → Restore app registration**. Restoring it there also restores its service principal ([Microsoft Learn](https://learn.microsoft.com/entra/identity/enterprise-apps/restore-application)). Agent identities that the background cleanup already removed must each be restored separately.
+Deleting a blueprint also soft-deletes its agent identities, in the background ([Microsoft Learn](https://learn.microsoft.com/entra/agent-id/concept-agent-identity-deletion)). A blueprint can be restored within 30 days through Microsoft Graph; the admin center does not restore agent identity objects ([Microsoft Learn](https://learn.microsoft.com/entra/agent-id/howto-delete-agent-identity)). Restore the application, then its service principal. Use the object id (column 2) and the app id (column 3) from `$STATE/blueprints`:
+
+```bash
+OBJ='<object-id>'; APPID='<app-id>'
+az rest --method POST --url "https://graph.microsoft.com/v1.0/directory/deletedItems/$OBJ/restore"
+SP=$(az rest --method GET \
+  --url "https://graph.microsoft.com/v1.0/directory/deletedItems/microsoft.graph.servicePrincipal?\$filter=appId eq '$APPID'" \
+  --query "value[0].id" -o tsv)
+[ -n "$SP" ] && az rest --method POST --url "https://graph.microsoft.com/v1.0/directory/deletedItems/$SP/restore"
+```
+
+Agent identities that the background cleanup already removed must each be restored separately.
 
 ## 6. Delete the resource group
 
@@ -197,6 +208,8 @@ az cognitiveservices account purge -n "$ACCT" -g "$RG" -l "$REGION"
 
 ## 8. Verify
 
+For the main path. After the recovery path, run its listing again instead.
+
 ```bash
 RG='<install-rg>'; STATE="$HOME/.m8t/teardown-$RG"; . "$STATE/env"; : "${SUB:?}" "${ACCT:?}" "${APP_ID:?}"
 az group exists -n "$RG"                                                             # expect false
@@ -205,7 +218,7 @@ while IFS= read -r P; do
 done < "$STATE/principals"                                                           # expect nothing
 az ad app list --app-id "$APP_ID" --query "length(@)" -o tsv                         # 0 after 4a
 az ad app list --app-id "$APP_ID" --query "[].spa.redirectUris" -o json              # after 4b: no https://$FQDN
-az ad app list --filter "startswith(displayName,'$ACCT-')" --query "length(@)" -o tsv   # 0 after step 5
+az ad app list --filter "startswith(displayName,'$ACCT-')" --query "length([?ends_with(displayName,'-AgentIdentityBlueprint')])" -o tsv   # 0 after step 5
 az cognitiveservices account list-deleted --query "length([?name=='$ACCT'])" -o tsv  # 0 after step 7
 ```
 
@@ -221,36 +234,36 @@ az cognitiveservices account list-deleted -o json \
   | jq -r --arg rg "/resourcegroups/$RG/" '.[] | select(.id | ascii_downcase | contains($rg | ascii_downcase)) | "\(.name) \(.location)"'
 echo "## the sign-in app registration, if the install page created it"
 az ad app list --filter "displayName eq 'm8t-install-$RG'" --query "[].{appId:appId,id:id,tags:tags,redirects:spa.redirectUris}" -o json
-echo "## subscription-scope install roles whose principal lookup came back empty"
+echo "## subscription-scope install roles, with the name az found for each principal"
 az role assignment list --all \
-  --query "[?scope=='/subscriptions/$SUB' && (description=='m8t-gateway auto-reap (bootstrap)' || description=='m8t-installer auto-reap (bootstrap)') && principalName==''].{role:roleDefinitionName,principal:principalId,id:id}" -o table
+  --query "[?scope=='/subscriptions/$SUB' && (description=='m8t-gateway auto-reap (bootstrap)' || description=='m8t-installer auto-reap (bootstrap)')].{role:roleDefinitionName,principal:principalId,name:principalName,id:id}" -o table
 ```
 
 **Foundry account and app registration.** Add what the listing found to the state file, then run the matching steps above:
 - step 5 for the blueprints, which needs `ACCT`;
 - step 7 for the purge, which needs `ACCT` and `REGION`;
-- step 4 for the app registration, which needs `APP_ID`, `APP_OBJ`, and `FQDN`, your platform's address from the done screen without `https://`.
+- step 4 for the app registration, which needs `APP_ID`, `APP_OBJ`, `SP_OBJ` (`az ad sp show --id <appId> --query id -o tsv`), and `FQDN`, your platform's address from the done screen without `https://`. If no `m8t-install-<group>` app was listed, your platform used an older, shared `m8t-webapp`. Take its ids from `az ad app list --display-name m8t-webapp`, check that its redirect URIs include your platform's address, and run 4b.
 
-Step 4 deletes only when the app registration carries the install tag and holds no other address. Each line appends, so a value saved earlier by step 1 is kept unless you set it again:
+Step 4 deletes only when the app registration carries the install tag and holds no other address. Append only the lines for values you found; a later line overrides an earlier one when the file is loaded:
 
 ```bash
 RG='<install-rg>'; E="$HOME/.m8t/teardown-$RG/env"
 echo "RG='$RG'" >> "$E"
 echo "ACCT='<account-name>'" >> "$E"; echo "REGION='<location>'" >> "$E"
-echo "APP_ID='<appId>'" >> "$E"; echo "APP_OBJ='<id>'" >> "$E"; echo "FQDN='<platform-host>'" >> "$E"
+echo "APP_ID='<appId>'" >> "$E"; echo "APP_OBJ='<id>'" >> "$E"; echo "SP_OBJ='<sp-id>'" >> "$E"; echo "FQDN='<platform-host>'" >> "$E"
 ```
 
-**Roles.** A role listed has an empty `principalName`, which az sets when it looked the principal up and found nothing.
+**Roles.** A role whose `name` column is empty is orphaned: az looked its principal up and found nothing. If every row shows an empty name, including roles of platforms you still run, az could not read the directory; stop and fix access first.
 
 **[PAUSE — operator]** *"Delete the role `<id>` held by the deleted principal `<principal>`? (default: No)"* For each role, on yes:
 
 ```bash
 P='<principal>'; ID='<id>'
-if [ "$(az role assignment list --all --query "[?id=='$ID'].principalId | [0]" -o tsv)" = "$P" ] \
+if [ "$(az role assignment list --all --query "[?id=='$ID' && principalName=='' && (description=='m8t-gateway auto-reap (bootstrap)' || description=='m8t-installer auto-reap (bootstrap)')].principalId | [0]" -o tsv)" = "$P" ] \
    && az ad sp show --id "$P" 2>&1 | grep -q "does not exist"; then
   az rest --method delete --url "https://management.azure.com${ID}?api-version=2022-04-01"
 else
-  echo "REFUSED: the role is not held by that principal, or the principal still exists"
+  echo "REFUSED: not an install role with an empty principal name held by that principal, or that principal is a service principal that exists"
 fi
 ```
 
