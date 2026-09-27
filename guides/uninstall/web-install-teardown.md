@@ -1,155 +1,233 @@
 # `uninstall/web-install-teardown.md`: tear down an install made from the web page
 
-> 🤖 **Agent runbook.** Use this if you installed from the install page in your browser (`m8t.run/ezra/install` or `wazari.ai/ezra/install`). That install put the platform in its **own resource group**, named `rg-m8t-<8 hex>` unless you chose another name. Every destructive step is gated on an explicit operator confirmation. Steps 1–3 are read-only.
+> 🤖 **Agent runbook.** Use this if you installed from the install page in your browser (`m8t.run/ezra/install` or `wazari.ai/ezra/install`). That install put the platform in its **own resource group**, named `rg-m8t-<8 hex>` unless you chose another name. Every step that deletes or changes something is gated on an explicit operator confirmation, default **No**. Steps 1 and 2 only read.
+>
+> **Shells.** The commands work in bash and zsh. Step 1 saves what it finds to `~/.m8t/teardown-<resource group>/`, and each later step starts by loading it, because an agent's shell may not keep variables between commands.
+>
+> **The resource group is already gone?** Skip to [If the resource group is already deleted](#if-the-resource-group-is-already-deleted).
 
 ## What an install leaves outside its resource group
 
-Deleting the resource group removes everything inside it. These objects live outside it, so this runbook removes them one by one:
+Deleting the resource group removes everything inside it. These objects live outside it:
 
-| Object | Where it lives | Removed in |
+| Object | Where it lives | Step |
 |---|---|---|
-| The install's sign-in app registration and its service principal | Your Entra directory | Step 5 |
-| The platform's address, as a sign-in redirect URI on that app registration | On the app registration | Step 5 (goes with it) |
-| About three `…-AgentIdentityBlueprint` app registrations, created by Foundry | Your Entra directory | Step 6 |
-| The gateway identity's two subscription-scope reader roles | Your subscription | Step 4 |
-| The installer identity's subscription-scope Owner role, if the install did not remove it when it finished | Your subscription | Step 4 |
-| The soft-deleted Foundry account's quota hold | Your subscription | Step 8 |
+| The gateway identity's two subscription-scope reader roles | Your subscription | 3 |
+| The installer identity's subscription-scope Owner role, if the install did not remove it when it finished | Your subscription | 3 |
+| The platform's sign-in app registration, with the platform's address as a redirect URI | Your Entra directory | 4 |
+| Foundry's `…-AgentIdentityBlueprint` app registrations: one for the Foundry project and one per agent (a new install has three) | Your Entra directory | 5 |
+| The soft-deleted Foundry account's quota hold | Your subscription | 7 |
 
 Your GitHub App and brain repo are your data and are left in place (see the end).
 
-## 1. Identify the install (read-only)
+## 1. Identify the install and save what you find (read-only)
 
 ```bash
 RG=<install-rg>                  # shown on the install page's done screen; also in the Azure portal
+STATE="$HOME/.m8t/teardown-$RG"; mkdir -p "$STATE"
 SUB=$(az account show --query id -o tsv)
 ACCT=$(az cognitiveservices account list -g "$RG" --query "[?kind=='AIServices'].name | [0]" -o tsv)
 REGION=$(az cognitiveservices account list -g "$RG" --query "[?kind=='AIServices'].location | [0]" -o tsv)
+GATEWAYS=$(az containerapp list -g "$RG" --query "length([?tags.m8t=='gateway'])" -o tsv)
 GW=$(az containerapp list -g "$RG" --query "[?tags.m8t=='gateway'].name | [0]" -o tsv)
+FQDN=$(az containerapp show -g "$RG" -n "$GW" --query properties.configuration.ingress.fqdn -o tsv)
 APP_ID=$(az containerapp show -g "$RG" -n "$GW" \
   --query "properties.template.containers[0].env[?name=='AZURE_CLIENT_ID'].value | [0]" -o tsv)
-echo "RG=$RG ACCT=$ACCT REGION=$REGION GW=$GW APP_ID=$APP_ID"
+APP_OBJ=$(az ad app show --id "$APP_ID" --query id -o tsv)
+SP_OBJ=$(az ad sp show --id "$APP_ID" --query id -o tsv)
+printf 'RG=%s\nSUB=%s\nACCT=%s\nREGION=%s\nGW=%s\nFQDN=%s\nAPP_ID=%s\nAPP_OBJ=%s\nSP_OBJ=%s\n' \
+  "$RG" "$SUB" "$ACCT" "$REGION" "$GW" "$FQDN" "$APP_ID" "$APP_OBJ" "$SP_OBJ" > "$STATE/env"
+{ az resource list -g "$RG" --query "[?identity.principalId!=null].identity.principalId" -o tsv
+  az identity list -g "$RG" --query "[].principalId" -o tsv
+} | sort -u > "$STATE/principals"
+cat "$STATE/env"; echo "gateways: $GATEWAYS"; echo "identities: $(wc -l < "$STATE/principals")"
 az resource list -g "$RG" --query "[].{name:name,type:type}" -o table
 ```
 
-**[PAUSE, operator]** Confirm the group is the one the install created, and that it holds the Foundry account and a gateway. Stop if anything unexpected appears.
+The identities in the group are captured here because after the group is deleted they no longer resolve. The system-assigned ones come from `az resource list`, and the user-assigned ones from `az identity list`.
 
-## 2. List the identities in the group (read-only)
+**[PAUSE — operator]** Continue only if all of these hold:
+- the group is the one the install created;
+- `gateways` is `1`;
+- every value in the env file is non-empty;
+- `identities` is at least `1`.
 
-Capture these **before** the group is deleted. Afterwards, the principals no longer resolve.
+Otherwise stop.
+
+Every later step starts with these two lines:
 
 ```bash
-PRINCIPALS=$( {
-  az resource list -g "$RG" --query "[?identity.principalId!=null].identity.principalId" -o tsv
-  az identity list -g "$RG" --query "[].principalId" -o tsv
-} | sort -u )
-echo "$PRINCIPALS"
+RG=<install-rg>; STATE="$HOME/.m8t/teardown-$RG"; . "$STATE/env"
+: "${SUB:?}" "${ACCT:?}" "${APP_ID:?}" "${APP_OBJ:?}" "${FQDN:?}"
 ```
 
-## 3. List what those identities hold at subscription scope (read-only)
+## 2. List what those identities hold at subscription scope (read-only)
 
 ```bash
-for P in $PRINCIPALS; do
+while IFS= read -r P; do
   az role assignment list --all --assignee-object-id "$P" \
     --query "[?scope=='/subscriptions/$SUB'].{role:roleDefinitionName,description:description,id:id}" -o tsv
-done
+done < "$STATE/principals"
 ```
 
-You should see two lines for the gateway, **Cost Management Reader** and **Monitoring Reader**, each with the description `m8t-gateway auto-reap (bootstrap)`. You may also see **Owner** with the description `m8t-installer auto-reap (bootstrap)`. Newer versions of the install page delete that role when the install finishes, and older ones leave it.
+You should see two lines for the gateway, **Cost Management Reader** and **Monitoring Reader**, each with the description `m8t-gateway auto-reap (bootstrap)`. You may also see **Owner** with the description `m8t-installer auto-reap (bootstrap)`. Newer versions of the install page delete that role when the install finishes.
 
-## 4. Remove the subscription-scope roles
+## 3. Remove the subscription-scope roles
 
-**[PAUSE, operator]** *"Delete the subscription-scope role assignments listed in step 3? They belong only to identities inside `$RG`. (default: No)"* Proceed only on an explicit yes.
+**[PAUSE — operator]** *"Delete the subscription-scope role assignments listed in step 2? They belong only to identities inside `$RG`. (default: No)"*
 
 ```bash
-for P in $PRINCIPALS; do
+while IFS= read -r P; do
   az role assignment list --all --assignee-object-id "$P" \
     --query "[?scope=='/subscriptions/$SUB'].id" -o tsv \
   | while IFS= read -r id; do
       az rest --method delete --url "https://management.azure.com${id}?api-version=2022-04-01"
     done
-done
+done < "$STATE/principals"
+touch "$STATE/roles-decided"
 ```
 
-These are the same gateway roles [`bootstrap-teardown.md`](bootstrap-teardown.md) step 3 removes. If the group is already gone, use the recovery path there: delete by assignment id, never by role name. Other gateways in the subscription hold the same role names.
+Run the `touch` line after a "No" too. Step 6 checks for this file, so the group is not deleted before the roles are decided.
 
-## 5. Remove the install's sign-in app registration
+## 4. The platform's sign-in app registration
 
-Your platform signs people in with one app registration. `APP_ID` from step 1 is its client id. Deleting it also removes its service principal and the platform's redirect URI.
+Decide from what the app registration holds, not from its name:
 
 ```bash
-az ad app show --id "$APP_ID" --query "{name:displayName, tags:tags, redirects:spa.redirectUris}" -o json
+TAGGED=$(az ad app show --id "$APP_ID" --query "contains(tags, 'm8t-install-created')" -o tsv)
+OTHERS=$(az ad app show --id "$APP_ID" --query spa.redirectUris -o json | jq -c --arg u "https://$FQDN" '. - [$u]')
+az ad app show --id "$APP_ID" --query "{name:displayName, tags:tags}" -o json
+echo "tagged=$TAGGED  other redirect URIs=$OTHERS"
 ```
 
-- **Named `m8t-install-<resource group>`, with `m8t-install-created` in `tags`:** it belongs to this install alone.
-- **Named `m8t-webapp`** (older versions of the install page): several platforms in one directory can share it. Delete it only if no other platform you keep uses it. Check each other gateway's `AZURE_CLIENT_ID` with the step 1 command. If another platform shares it, don't delete it; remove only this platform's redirect URI (below).
+- **`tagged=true` and `other redirect URIs=[]`:** the install page created this app registration, and only this platform uses it. Offer 4a.
+- **Anything else:** another platform, a developer, or an older version of the install page may depend on it. Don't delete it; offer 4b.
 
-**[PAUSE, operator]** *"Delete the app registration `<name>` (`$APP_ID`)? (default: No)"*
+### 4a. Delete it
+
+**[PAUSE — operator]** *"Delete the app registration `$APP_ID`, which only this platform uses? (default: No)"*
 
 ```bash
 az ad app delete --id "$APP_ID"
+az ad sp list --filter "appId eq '$APP_ID'" --query "length(@)" -o tsv   # expect 0; if not: az ad sp delete --id "$APP_ID"
 ```
 
-Deleting it needs Application Administrator, Cloud Application Administrator or Global Administrator, or ownership of the app registration. A deleted app registration can be restored for 30 days:
+A deleted app registration can be restored within 30 days ([Microsoft Learn](https://learn.microsoft.com/entra/identity-platform/howto-restore-app)). Through Graph, the service principal is restored separately:
 
 ```bash
-az rest --method POST --url "https://graph.microsoft.com/v1.0/directory/deletedItems/<object-id>/restore"
+az rest --method POST --url "https://graph.microsoft.com/v1.0/directory/deletedItems/$APP_OBJ/restore"
+az rest --method POST --url "https://graph.microsoft.com/v1.0/directory/deletedItems/$SP_OBJ/restore"
 ```
 
-**Keeping a shared `m8t-webapp` and removing only this platform's redirect URI:**
+### 4b. Remove only this platform's address
 
 ```bash
-FQDN=$(az containerapp show -g "$RG" -n "$GW" --query properties.configuration.ingress.fqdn -o tsv)
-OBJ=$(az ad app show --id "$APP_ID" --query id -o tsv)
-KEEP=$(az ad app show --id "$APP_ID" --query spa.redirectUris -o json | jq -c --arg u "https://$FQDN" '. - [$u]')
-az rest --method PATCH --url "https://graph.microsoft.com/v1.0/applications/$OBJ" \
-  --headers "Content-Type=application/json" --body "{\"spa\":{\"redirectUris\":$KEEP}}"
+OTHERS=$(az ad app show --id "$APP_ID" --query spa.redirectUris -o json | jq -c --arg u "https://$FQDN" '. - [$u]')
+echo "$OTHERS"   # what will remain
 ```
 
-## 6. Remove the Foundry blueprint app registrations
+**[PAUSE — operator]** *"Remove `https://$FQDN` from the sign-in redirect URIs of `$APP_ID`, keeping the ones listed? (default: No)"*
 
-Foundry creates about three `AgentIdentityBlueprint` app registrations for the platform, named after the Foundry account. They are not in the resource group.
+```bash
+: "${OTHERS:?}"
+az rest --method PATCH --url "https://graph.microsoft.com/v1.0/applications/$APP_OBJ" \
+  --headers "Content-Type=application/json" --body "{\"spa\":{\"redirectUris\":$OTHERS}}"
+az ad app show --id "$APP_ID" --query spa.redirectUris -o json
+```
+
+## 5. Foundry's blueprint app registrations
+
+They are named `<Foundry account>-<project>-…-AgentIdentityBlueprint`.
 
 ```bash
 az ad app list --filter "startswith(displayName,'$ACCT-')" \
-  --query "[?ends_with(displayName,'-AgentIdentityBlueprint')].{name:displayName,id:id,created:createdDateTime}" -o table
+  --query "[?ends_with(displayName,'-AgentIdentityBlueprint')].[displayName,id]" -o tsv \
+  > "$STATE/blueprints"
+cat "$STATE/blueprints"; echo "count: $(wc -l < "$STATE/blueprints")"
 ```
 
-**[PAUSE, operator]** *"Delete these blueprint app registrations? (default: No)"*
+**[PAUSE — operator]** Check that every name starts with `$ACCT-`. *"Delete these blueprint app registrations? (default: No)"*
 
 ```bash
-az ad app list --filter "startswith(displayName,'$ACCT-')" \
-  --query "[?ends_with(displayName,'-AgentIdentityBlueprint')].id" -o tsv \
-| while IFS= read -r id; do az ad app delete --id "$id"; done
+cut -f2 "$STATE/blueprints" | while IFS= read -r id; do az ad app delete --id "$id"; done
 ```
 
-**Who can delete these:** a **Global Administrator**. **Application Administrator is refused**; we measured that refusal. Microsoft's Graph documentation also names an owner of the blueprint and the *Agent ID Administrator* role; we have not tested either. Their owner is a service principal, not you. They can be restored for 30 days with the command in step 5.
+**Who can delete these:**
+- **Global Administrator** can.
+- **Application Administrator** is refused; we measured that refusal.
+- Microsoft's Graph documentation also names the blueprint's owner and the *Agent ID Administrator* role. We have not tested either.
 
-## 7. Delete the resource group
+Each blueprint's owner is a service principal, not you (measured). They can be restored within 30 days like the app registration in 4a, using each id in `$STATE/blueprints`.
 
-**[PAUSE, operator]** *"Delete the entire resource group `$RG` and everything in it? (default: No)"*
+## 6. Delete the resource group
 
 ```bash
-az group delete -n "$RG" --yes
+[ -f "$STATE/roles-decided" ] || echo "STOP: run step 3 first"
 ```
 
-## 8. Purge the soft-deleted Foundry account
+**[PAUSE — operator]** *"Delete the entire resource group `$RG` and everything in it? (default: No)"*
+
+```bash
+[ -f "$STATE/roles-decided" ] && az group delete -n "$RG" --yes
+```
+
+## 7. Purge the soft-deleted Foundry account
+
+The reason is in [`bootstrap-teardown.md`](bootstrap-teardown.md) step 5: an unpurged account holds its model quota for about 48 hours.
+
+**[PAUSE — operator]** *"Purge the deleted Foundry account `$ACCT`? It cannot be recovered afterwards. (default: No)"*
 
 ```bash
 az cognitiveservices account purge -n "$ACCT" -g "$RG" -l "$REGION"
 ```
 
-The reason is in [`bootstrap-teardown.md`](bootstrap-teardown.md) step 5: an unpurged account holds its model quota for about 48 hours.
-
-## 9. Verify
+## 8. Verify
 
 ```bash
-az group show -n "$RG" 2>/dev/null || echo "group gone"
-for P in $PRINCIPALS; do az role assignment list --all --assignee-object-id "$P" --query "[].id" -o tsv; done   # expect empty
-az ad app show --id "$APP_ID" 2>/dev/null || echo "sign-in app registration gone"   # unless you kept a shared m8t-webapp
-az ad app list --filter "startswith(displayName,'$ACCT-')" --query "[].displayName" -o tsv   # expect empty
-az cognitiveservices account list-deleted --query "[?name=='$ACCT'].name" -o tsv            # expect empty
+az group exists -n "$RG"                                                             # expect false
+while IFS= read -r P; do
+  az role assignment list --all --assignee-object-id "$P" --query "[?scope=='/subscriptions/$SUB'].id" -o tsv
+done < "$STATE/principals"                                                           # expect nothing
+az ad app list --app-id "$APP_ID" --query "length(@)" -o tsv                         # 0 after 4a
+az ad app list --app-id "$APP_ID" --query "[].spa.redirectUris" -o json              # after 4b: no https://$FQDN
+az ad app list --filter "startswith(displayName,'$ACCT-')" --query "length(@)" -o tsv   # 0 after step 5
+az cognitiveservices account list-deleted --query "length([?name=='$ACCT'])" -o tsv  # 0 after step 7
 ```
+
+## If the resource group is already deleted
+
+The identities can no longer be looked up, so this finds the leftovers by what they carry.
+
+```bash
+RG=<install-rg>; STATE="$HOME/.m8t/teardown-$RG"; mkdir -p "$STATE"
+SUB=$(az account show --query id -o tsv)
+# The Foundry account, if it is still soft-deleted (its id contains /resourceGroups/<group>/):
+az cognitiveservices account list-deleted -o json \
+  | jq -r --arg rg "/resourcegroups/$RG/" '.[] | select(.id | ascii_downcase | contains($rg | ascii_downcase)) | "\(.name) \(.location)"'
+# The sign-in app registration, if the install page created it:
+az ad app list --filter "displayName eq 'm8t-install-$RG'" \
+  --query "[].{appId:appId,id:id,tags:tags,redirects:spa.redirectUris}" -o json
+# Subscription-scope roles left by install identities whose principal no longer exists:
+az role assignment list --all \
+  --query "[?scope=='/subscriptions/$SUB' && (description=='m8t-gateway auto-reap (bootstrap)' || description=='m8t-installer auto-reap (bootstrap)') && !principalName].{role:roleDefinitionName,principal:principalId,id:id}" -o table
+```
+
+- **Foundry account:** if one is listed, write `ACCT` and `REGION` into `$STATE/env` and run steps 5 and 7. If the account has already been purged but you know its name, step 5 still works.
+- **App registration:** if it is listed, write `APP_ID`, `APP_OBJ` and `SUB` into `$STATE/env`. Set `FQDN` to this platform's host from its redirect URIs, then follow step 4.
+- **Roles:**
+  - Each role listed belongs to an identity that no longer exists; the `!principalName` filter selects those.
+  - Before deleting one, confirm its principal is gone: `az ad sp show --id <principal>` must fail. Then delete it by id:
+
+    ```bash
+    az rest --method delete --url "https://management.azure.com<id>?api-version=2022-04-01"
+    ```
+
+  - Roles left by other deleted installs match too, and they are just as orphaned.
+  - Never delete a role whose principal still resolves.
 
 ## GitHub App and brain repo (your data, left in place)
 
-As in [`bootstrap-teardown.md`](bootstrap-teardown.md): uninstall the App at `https://github.com/settings/installations`, delete it at `https://github.com/settings/apps/<slug>/advanced`, and delete the brain repo only if you want its data gone (`gh repo delete <org>/<repo>`).
+As in [`bootstrap-teardown.md`](bootstrap-teardown.md):
+- uninstall the App at `https://github.com/settings/installations`;
+- delete it at `https://github.com/settings/apps/<slug>/advanced`;
+- delete the brain repo only if you want its data gone: `gh repo delete <org>/<repo>`.
