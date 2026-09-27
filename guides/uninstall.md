@@ -57,7 +57,7 @@ live, and removing the folder first leaves the app on the desktop with nothing p
 
 ### 2. Remove the `~/.m8t/` operational folder
 
-If you ran a cloud teardown, `~/.m8t/teardown-*/` holds its state, including the ids needed to restore a deleted app registration within 30 days. Keep it until you no longer need a restore.
+If you ran a cloud teardown, `~/.m8t/teardown-*/` holds its state, including the ids it saved for restoring a deleted app registration within 30 days. Keep it until you no longer need a restore.
 
 Open and follow `uninstall/m8t-folder.md`. Handles `~/.m8t/` including `founder.yaml`, `repo-root`, and `foundry/<agent-name>.yaml` files (the only local record of what's deployed in your Foundry project — the live agents themselves are unaffected). Default: no for the folder, **no default** on the `foundry/` sub-prompt — the user must explicitly answer.
 
