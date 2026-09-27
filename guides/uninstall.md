@@ -26,7 +26,8 @@ the two have **opposite** semantics, so choosing wrong is a footgun:
   `wazari.ai/ezra/install`) — the platform is in its **own resource group**, `rg-m8t-<8 hex>` unless
   you named it. Use [`uninstall/web-install-teardown.md`](uninstall/web-install-teardown.md): besides
   the resource group, it removes the objects the install left outside it — the sign-in app
-  registration, the Foundry blueprint app registrations, and the subscription-scoped roles.
+  registration (or only the platform's address on it, when it is shared), the Foundry blueprint app
+  registrations, and the subscription-scoped roles.
 - **Installed via [`bootstrap.md`](bootstrap.md)** — the platform is in its **own dedicated resource
   group** (Foundry + gateway + workers together). Use
   [`uninstall/bootstrap-teardown.md`](uninstall/bootstrap-teardown.md): it deletes the whole RG,
@@ -78,11 +79,14 @@ When every step completes, tell the user:
 
 ## Add your platform's sign-in address by hand
 
+**Not a removal step.** Run it only when the install page links you here. (default: No)
+
 For an install whose done screen says the page will not change your platform's sign-in identity.
 That happens when the sign-in app registration this browser recorded was not created by the install
 page (an install started by an older version of the page). The page then leaves it alone, and
 signing in to the platform fails until the platform's address is registered on it. This adds the address and keeps every
-address already there:
+address already there. Changing the app registration needs Application Administrator, Cloud
+Application Administrator, or ownership of it.
 
 ```bash
 RG=<install-rg>
@@ -90,13 +94,14 @@ GW=$(az containerapp list -g "$RG" --query "[?tags.m8t=='gateway'].name | [0]" -
 FQDN=$(az containerapp show -g "$RG" -n "$GW" --query properties.configuration.ingress.fqdn -o tsv)
 APP_ID=$(az containerapp show -g "$RG" -n "$GW" \
   --query "properties.template.containers[0].env[?name=='AZURE_CLIENT_ID'].value | [0]" -o tsv)
+: "${FQDN:?}" "${APP_ID:?}"
 OBJ=$(az ad app show --id "$APP_ID" --query id -o tsv)
 URIS=$(az ad app show --id "$APP_ID" --query spa.redirectUris -o json \
   | jq -c --arg u "https://$FQDN" '. + [$u] | unique')
 echo "$URIS"   # check: every address that was there, plus https://<your platform>
 ```
 
-**[PAUSE — operator]** *"Add `https://$FQDN` to the sign-in redirect URIs of `$APP_ID`?"*
+**[PAUSE — operator]** *"Add `https://$FQDN` to the sign-in redirect URIs of `$APP_ID`? (default: No)"*
 
 ```bash
 az rest --method PATCH --url "https://graph.microsoft.com/v1.0/applications/$OBJ" \
