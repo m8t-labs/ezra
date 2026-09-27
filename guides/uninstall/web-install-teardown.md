@@ -169,7 +169,7 @@ cut -f2 "$STATE/blueprints" | while IFS= read -r id; do az ad app delete --id "$
 - [Microsoft Learn](https://learn.microsoft.com/entra/agent-id/howto-delete-agent-identity) names *Agent ID Administrator* and *Cloud Application Administrator* for managing and deleting agent identity objects. We have not tried either.
 - Each blueprint's owner is a service principal, not you (measured).
 
-Deleting a blueprint also soft-deletes its agent identities, in the background ([Microsoft Learn](https://learn.microsoft.com/entra/agent-id/concept-agent-identity-deletion)). A blueprint can be restored within 30 days through Microsoft Graph; the admin center does not restore agent identity objects ([Microsoft Learn](https://learn.microsoft.com/entra/agent-id/howto-delete-agent-identity)). Restore the application, then its service principal. Use the object id (column 2) and the app id (column 3) from `$STATE/blueprints`:
+Deleting a blueprint also soft-deletes its agent identities, in the background ([Microsoft Learn](https://learn.microsoft.com/entra/agent-id/concept-agent-identity-deletion)). A blueprint can be restored within 30 days through Microsoft Graph; the admin center does not restore agent identity objects ([Microsoft Learn](https://learn.microsoft.com/entra/agent-id/howto-delete-agent-identity)). Restore the application ([Microsoft Learn](https://learn.microsoft.com/entra/identity-platform/howto-restore-app)), then its service principal; we have not run this restore. Use the object id (column 2) and the app id (column 3) from `$STATE/blueprints`:
 
 ```bash
 OBJ='<object-id>'; APPID='<app-id>'
@@ -177,7 +177,8 @@ az rest --method POST --url "https://graph.microsoft.com/v1.0/directory/deletedI
 SP=$(az rest --method GET \
   --url "https://graph.microsoft.com/v1.0/directory/deletedItems/microsoft.graph.servicePrincipal?\$filter=appId eq '$APPID'" \
   --query "value[0].id" -o tsv)
-[ -n "$SP" ] && az rest --method POST --url "https://graph.microsoft.com/v1.0/directory/deletedItems/$SP/restore"
+[ -n "$SP" ] && az rest --method POST --url "https://graph.microsoft.com/v1.0/directory/deletedItems/$SP/restore" \
+  || echo "no deleted service principal for $APPID"
 ```
 
 Agent identities that the background cleanup already removed must each be restored separately.
@@ -208,7 +209,7 @@ az cognitiveservices account purge -n "$ACCT" -g "$RG" -l "$REGION"
 
 ## 8. Verify
 
-For the main path. After the recovery path, run its listing again instead.
+For the main path. After the recovery path, run its listing again, step 5's listing (expect `count: 0`), and step 4's first block.
 
 ```bash
 RG='<install-rg>'; STATE="$HOME/.m8t/teardown-$RG"; . "$STATE/env"; : "${SUB:?}" "${ACCT:?}" "${APP_ID:?}"
@@ -242,7 +243,7 @@ az role assignment list --all \
 **Foundry account and app registration.** Add what the listing found to the state file, then run the matching steps above:
 - step 5 for the blueprints, which needs `ACCT`;
 - step 7 for the purge, which needs `ACCT` and `REGION`;
-- step 4 for the app registration, which needs `APP_ID`, `APP_OBJ`, `SP_OBJ` (`az ad sp show --id <appId> --query id -o tsv`), and `FQDN`, your platform's address from the done screen without `https://`. If no `m8t-install-<group>` app was listed, your platform used an older, shared `m8t-webapp`. Take its ids from `az ad app list --display-name m8t-webapp`, check that its redirect URIs include your platform's address, and run 4b.
+- step 4 for the app registration, which needs `APP_ID`, `APP_OBJ`, `SP_OBJ` (`az ad sp show --id <appId> --query id -o tsv`), and `FQDN`, your platform's address from the done screen without `https://`. If no `m8t-install-<group>` app was listed, your platform used an older, shared `m8t-webapp`. `az ad app list --display-name m8t-webapp` matches by prefix and can list several; take the ids of the one whose redirect URIs include your platform's address, and run 4b.
 
 Step 4 deletes only when the app registration carries the install tag and holds no other address. Append only the lines for values you found; a later line overrides an earlier one when the file is loaded:
 
