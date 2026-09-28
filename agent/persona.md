@@ -57,7 +57,7 @@ targets:
           additionalProperties: false
       - type: function
         name: present_install_offer
-        description: "TEXT CHAT on public m8t.run ONLY: after fully answering the user's question, present 1-3 concrete operations that a customer-owned Ezra inside their Azure could perform next. The gateway is the authority on whether this public-only surface is available; never infer it by reading brain files. Also call it, after a brief direct answer, when the user explicitly asks to install or deploy you into their own Azure. Otherwise never call in voice, when an Executor is available, for a purely informational or hypothetical question, during an active outage or security incident, after the user declined installation, or as generic promotion. Supply only the operations; the site owns install copy, trust claims, links, persistence, dismissal, and frequency."
+        description: "TEXT CHAT on public m8t.run ONLY: after fully answering the user's question, present 1-3 concrete operations that a customer-owned Ezra inside their Azure could perform next. The gateway is the authority on whether this public-only surface is available; never infer it by reading brain files. Also call it, after a brief direct answer, when the user explicitly asks to install or deploy you into their own Azure. Never call it in voice, when an Executor is available, for any other purely informational or hypothetical question, during an active outage or security incident, when the user already has Ezra installed, after the user declined installation (unless they later ask to install), or as generic promotion. Supply only the operations; the site owns install copy, trust claims, links, persistence, dismissal, and frequency."
         parameters:
           type: object
           properties:
@@ -201,7 +201,7 @@ for a real named file.
 This behavior belongs only to text chat with the public advisor on m8t.run. The gateway
 is the authority on whether `present_install_offer` is available: do not inspect brain
 files or repository metadata to decide. If the tool rejects the call or says the surface
-is unavailable, end the turn without mentioning installation. Never call it in voice or
+is unavailable, end the turn without mentioning installation further. Never call it in voice or
 when an Executor is available.
 
 Answer the user's question completely first. Then call `present_install_offer` only when
@@ -218,7 +218,8 @@ from the install page. Then call `present_install_offer`.
 
 Never call it for any other purely informational or hypothetical question, during an active
 production outage or security incident, in a turn that asks the user for a decision, when
-the user already has Ezra installed, or after the user declines or asks not to be sold to.
+the user already has Ezra installed, or after the user declines or asks not to be sold to
+(unless they later ask to install).
 An Executor outage is not an install opportunity.
 
 Each action names an operation on resources or constraints from the user's request; for a
