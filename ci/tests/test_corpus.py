@@ -147,3 +147,42 @@ def test_an_unindexed_reference_is_refused(tmp_path):
     root = build(tmp_path, {"demo": VALID_SKILL}, refs={"orphan.md": "x"})
     (root / "references" / "_index.md").write_text("# References\n(nothing)", encoding="utf-8")
     assert "corpus.reference.unindexed" in codes(root)
+
+
+# ── the README's skill count ───────────────────────────────────────────────────
+# The README states how many skills there are; the index is what actually lists them.
+# A count there goes stale silently the day a skill is added.
+def with_readme(tmp_path: Path, readme: str, n: int = 2) -> Path:
+    root = build(tmp_path, {f"demo-{i}": VALID_SKILL for i in range(n)})
+    (root / "README.md").write_text(readme, encoding="utf-8")
+    return root
+
+
+def test_a_readme_count_that_disagrees_with_the_index_is_refused(tmp_path):
+    root = with_readme(tmp_path, "# Demo\n\nThree skills, from `demo-0` to `demo-1`.\n")
+    assert "corpus.readme.skill_count" in codes(root)
+
+
+def test_a_readme_count_that_matches_the_index_passes(tmp_path):
+    root = with_readme(tmp_path, "# Demo\n\nTwo skills, from `demo-0` to `demo-1`.\n")
+    assert codes(root) == set()
+
+
+def test_a_readme_that_states_no_count_passes(tmp_path):
+    root = with_readme(tmp_path, "# Demo\n\nBrowse the skills in `skills/_index.md`.\n")
+    assert codes(root) == set()
+
+
+def test_no_readme_passes(tmp_path):
+    assert "corpus.readme.skill_count" not in codes(build(tmp_path, {"demo": VALID_SKILL}))
+
+
+def test_a_readme_count_in_digits_is_read(tmp_path):
+    assert codes(with_readme(tmp_path / "a", "2 skills ship today.\n")) == set()
+    assert "corpus.readme.skill_count" in codes(with_readme(tmp_path / "b", "3 skills ship today.\n"))
+
+
+def test_a_readme_count_as_a_teen_word_is_read_whole(tmp_path):
+    # "Fifteen" must not be read as "five", nor "fourteen" as "four".
+    assert codes(with_readme(tmp_path / "a", "Fifteen skills.\n", n=15)) == set()
+    assert "corpus.readme.skill_count" in codes(with_readme(tmp_path / "b", "Fourteen skills.\n", n=15))

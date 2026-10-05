@@ -42,6 +42,34 @@ REQUIRED_SECTIONS = {
 
 HANDOFF_REF = "references/advisor-handoff.md"
 
+_NUMBER_WORDS = {
+    w: n for n, w in enumerate(
+        "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen "
+        "fifteen sixteen seventeen eighteen nineteen twenty".split())
+}
+_README_COUNT_RE = re.compile(rf"\b(\d+|{'|'.join(_NUMBER_WORDS)})\s+skills\b", re.I)
+_INDEX_ENTRY_RE = re.compile(r"^- `skills/[^`]+`", re.M)
+
+
+def _readme_skill_count(root: Path, skills_index: str) -> list[Finding]:
+    """The README's stated skill count against the entries in skills/_index.md.
+
+    The README is the first thing a visitor reads, and a count there goes stale
+    silently the day a skill is added."""
+    readme = root / "README.md"
+    if not readme.is_file():
+        return []
+    listed = len(_INDEX_ENTRY_RE.findall(skills_index))
+    f: list[Finding] = []
+    for m in _README_COUNT_RE.finditer(_registerable(readme.read_text(encoding="utf-8"))):
+        token = m.group(1)
+        stated = int(token) if token.isdigit() else _NUMBER_WORDS[token.lower()]
+        if stated != listed:
+            f.append(Finding("corpus.readme.skill_count",
+                             f"README.md says '{m.group(0)}' but skills/_index.md lists {listed}",
+                             "README.md"))
+    return f
+
 
 def check_corpus(root: Path, persona_rel: str = "agent/persona.md") -> list[Finding]:
     skills_dir = root / "skills"
@@ -101,5 +129,7 @@ def check_corpus(root: Path, persona_rel: str = "agent/persona.md") -> list[Find
         if rel not in ref_index:
             f.append(Finding("corpus.reference.unindexed",
                              f"{rel} is not listed in references/_index.md, so nothing can browse to it", rel))
+
+    f += _readme_skill_count(root, skills_index)
 
     return f
