@@ -42,13 +42,28 @@ REQUIRED_SECTIONS = {
 
 HANDOFF_REF = "references/advisor-handoff.md"
 
-_NUMBER_WORDS = {
-    w: n for n, w in enumerate(
-        "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen "
-        "fifteen sixteen seventeen eighteen nineteen twenty".split())
-}
-_README_COUNT_RE = re.compile(rf"\b(\d+|{'|'.join(_NUMBER_WORDS)})\s+skills\b", re.I)
-_INDEX_ENTRY_RE = re.compile(r"^- `skills/[^`]+`", re.M)
+_UNITS = {w: n for n, w in enumerate(
+    "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen "
+    "fifteen sixteen seventeen eighteen nineteen".split())}
+_TENS = {w: 10 * n for n, w in enumerate(
+    "twenty thirty forty fifty sixty seventy eighty ninety".split(), start=2)}
+# A whole number expression directly before "skills": digits, a word up to nineteen, or a
+# tens word with an optional hyphenated or spaced unit ("twenty-one"). The lookbehind keeps
+# a suffix of a longer expression ("one" in "twenty-one") from being read on its own.
+# Counts of a hundred or more are read only in digits.
+_README_COUNT_RE = re.compile(
+    rf"(?<![\w-])(?:(?P<tens>{'|'.join(_TENS)})(?:[- ](?P<unit>{'|'.join(list(_UNITS)[1:10])}))?"
+    rf"|(?P<word>{'|'.join(_UNITS)})|(?P<digits>\d+))\s+skills\b",
+    re.I)
+_INDEX_ENTRY_RE = re.compile(r"skills/[^`\s/]+/SKILL\.md")
+
+
+def _stated(m: re.Match) -> int:
+    if m["digits"]:
+        return int(m["digits"])
+    if m["word"]:
+        return _UNITS[m["word"].lower()]
+    return _TENS[m["tens"].lower()] + (_UNITS[m["unit"].lower()] if m["unit"] else 0)
 
 
 def _readme_skill_count(root: Path, skills_index: str) -> list[Finding]:
@@ -59,12 +74,12 @@ def _readme_skill_count(root: Path, skills_index: str) -> list[Finding]:
     readme = root / "README.md"
     if not readme.is_file():
         return []
-    listed = len(_INDEX_ENTRY_RE.findall(skills_index))
+    # The same notion of "listed" as the index-registration check: a skill path that
+    # appears in the index text, counted once.
+    listed = len(set(_INDEX_ENTRY_RE.findall(skills_index)))
     f: list[Finding] = []
     for m in _README_COUNT_RE.finditer(_registerable(readme.read_text(encoding="utf-8"))):
-        token = m.group(1)
-        stated = int(token) if token.isdigit() else _NUMBER_WORDS[token.lower()]
-        if stated != listed:
+        if _stated(m) != listed:
             f.append(Finding("corpus.readme.skill_count",
                              f"README.md says '{m.group(0)}' but skills/_index.md lists {listed}",
                              "README.md"))

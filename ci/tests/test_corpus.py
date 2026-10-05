@@ -3,6 +3,8 @@ from __future__ import annotations
 import textwrap
 from pathlib import Path
 
+import pytest
+
 from ci.rules.corpus import check_corpus
 
 VALID_SKILL = textwrap.dedent("""\
@@ -182,7 +184,41 @@ def test_a_readme_count_in_digits_is_read(tmp_path):
     assert "corpus.readme.skill_count" in codes(with_readme(tmp_path / "b", "3 skills ship today.\n"))
 
 
-def test_a_readme_count_as_a_teen_word_is_read_whole(tmp_path):
-    # "Fifteen" must not be read as "five", nor "fourteen" as "four".
-    assert codes(with_readme(tmp_path / "a", "Fifteen skills.\n", n=15)) == set()
-    assert "corpus.readme.skill_count" in codes(with_readme(tmp_path / "b", "Fourteen skills.\n", n=15))
+# A count is read as the whole number expression before "skills", never a suffix of it:
+# "Fifteen" is not "five", and "twenty-one" is not "one".
+@pytest.mark.parametrize("readme, listed", [
+    ("Fifteen skills.\n", 15),
+    ("Twenty skills.\n", 20),
+    ("Twenty-one skills.\n", 21),
+    ("Twenty one skills.\n", 21),
+    ("Thirty skills.\n", 30),
+])
+def test_a_spelled_out_count_that_matches_passes(tmp_path, readme, listed):
+    assert codes(with_readme(tmp_path, readme, n=listed)) == set()
+
+
+@pytest.mark.parametrize("readme, listed", [
+    ("Fourteen skills.\n", 15),
+    ("Thirty skills.\n", 15),
+    ("Twenty-five skills.\n", 5),
+    ("Twenty-one skills.\n", 1),
+])
+def test_a_spelled_out_count_that_disagrees_is_refused(tmp_path, readme, listed):
+    assert "corpus.readme.skill_count" in codes(with_readme(tmp_path, readme, n=listed))
+
+
+# Like the index and routing checks, a count inside a fence or an HTML comment is not
+# something a reader sees, so it is not held against the index.
+def test_a_count_inside_a_fence_or_comment_is_not_read(tmp_path):
+    readme = "Two skills.\n\n<!-- Three skills -->\n\n```\nThree skills\n```\n"
+    assert codes(with_readme(tmp_path, readme)) == set()
+
+
+# The count uses the same notion of "listed" as the registration check: an index entry
+# in another list style still counts, and an entry repeated is counted once.
+def test_the_count_follows_what_the_index_registers(tmp_path):
+    index = ("# Skills\n* `skills/demo-0/SKILL.md`\n  - `skills/demo-1/SKILL.md`\n"
+             "- `skills/demo-1/SKILL.md` — again\n")
+    root = build(tmp_path, {"demo-0": VALID_SKILL, "demo-1": VALID_SKILL}, index=index)
+    (root / "README.md").write_text("Two skills.\n", encoding="utf-8")
+    assert codes(root) == set()
