@@ -21,7 +21,7 @@ and [references](references/) — laid out as a working second brain.
 | **Makes changes, on your say-so** | States the exact effect in plain English — *"this removes Bob's Contributor role on the subscription; he'd lose write access"* — and waits for your yes. Never a surprise. |
 | **Remembers** | Decisions and hard-won gotchas land in this repo, so the next conversation starts where the last one ended. |
 
-Fourteen skills, from `quota-diagnose` to `hipaa-baa` to `cost-check`. Browse
+Fifteen skills, from `quota-diagnose` to `hipaa-baa` to `cost-check`. Browse
 [`skills/_index.md`](skills/_index.md) — they are plain Markdown, and improving one is a
 pull request.
 
@@ -30,7 +30,23 @@ pull request.
 Ezra runs on [m8t](https://m8t.run), which deploys into **your own Azure
 subscription** — your tenant, your data, your bill, no middleman holding your credentials.
 
-### Quickstart — one paste, about five minutes
+### Install page — one sign-in, about twenty minutes
+
+Hiring Ezra takes one sign-in. Open the
+[install page](https://wazari.ai/ezra/install). Sign in with the Microsoft account that
+owns your Azure subscription, choose the subscription, and he installs himself into it.
+About twenty minutes, unattended, with nothing to download and nothing to run on your
+machine.
+
+You need:
+
+- a work or school Microsoft account;
+- the Owner role on the subscription you choose;
+- a directory administrator, once, to accept the permission screen.
+
+GitHub is optional. The page states the cost before it creates anything.
+
+### Alternative — one paste into your coding agent, about five minutes
 
 Copy the whole box below and paste it into your coding agent (Claude Code, GitHub Copilot CLI, or VS Code Copilot Chat):
 

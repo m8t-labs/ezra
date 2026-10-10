@@ -3,6 +3,8 @@ from __future__ import annotations
 import textwrap
 from pathlib import Path
 
+import pytest
+
 from ci.rules.corpus import check_corpus
 
 VALID_SKILL = textwrap.dedent("""\
@@ -147,3 +149,76 @@ def test_an_unindexed_reference_is_refused(tmp_path):
     root = build(tmp_path, {"demo": VALID_SKILL}, refs={"orphan.md": "x"})
     (root / "references" / "_index.md").write_text("# References\n(nothing)", encoding="utf-8")
     assert "corpus.reference.unindexed" in codes(root)
+
+
+# ── the README's skill count ───────────────────────────────────────────────────
+# The README states how many skills there are; the index is what actually lists them.
+# A count there goes stale silently the day a skill is added.
+def with_readme(tmp_path: Path, readme: str, n: int = 2) -> Path:
+    root = build(tmp_path, {f"demo-{i}": VALID_SKILL for i in range(n)})
+    (root / "README.md").write_text(readme, encoding="utf-8")
+    return root
+
+
+def test_a_readme_count_that_disagrees_with_the_index_is_refused(tmp_path):
+    root = with_readme(tmp_path, "# Demo\n\nThree skills, from `demo-0` to `demo-1`.\n")
+    assert "corpus.readme.skill_count" in codes(root)
+
+
+def test_a_readme_count_that_matches_the_index_passes(tmp_path):
+    root = with_readme(tmp_path, "# Demo\n\nTwo skills, from `demo-0` to `demo-1`.\n")
+    assert codes(root) == set()
+
+
+def test_a_readme_that_states_no_count_passes(tmp_path):
+    root = with_readme(tmp_path, "# Demo\n\nBrowse the skills in `skills/_index.md`.\n")
+    assert codes(root) == set()
+
+
+def test_no_readme_passes(tmp_path):
+    assert "corpus.readme.skill_count" not in codes(build(tmp_path, {"demo": VALID_SKILL}))
+
+
+def test_a_readme_count_in_digits_is_read(tmp_path):
+    assert codes(with_readme(tmp_path / "a", "2 skills ship today.\n")) == set()
+    assert "corpus.readme.skill_count" in codes(with_readme(tmp_path / "b", "3 skills ship today.\n"))
+
+
+# A count is read as the whole number expression before "skills", never a suffix of it:
+# "Fifteen" is not "five", and "twenty-one" is not "one".
+@pytest.mark.parametrize("readme, listed", [
+    ("Fifteen skills.\n", 15),
+    ("Twenty skills.\n", 20),
+    ("Twenty-one skills.\n", 21),
+    ("Twenty one skills.\n", 21),
+    ("Thirty skills.\n", 30),
+])
+def test_a_spelled_out_count_that_matches_passes(tmp_path, readme, listed):
+    assert codes(with_readme(tmp_path, readme, n=listed)) == set()
+
+
+@pytest.mark.parametrize("readme, listed", [
+    ("Fourteen skills.\n", 15),
+    ("Thirty skills.\n", 15),
+    ("Twenty-five skills.\n", 5),
+    ("Twenty-one skills.\n", 1),
+])
+def test_a_spelled_out_count_that_disagrees_is_refused(tmp_path, readme, listed):
+    assert "corpus.readme.skill_count" in codes(with_readme(tmp_path, readme, n=listed))
+
+
+# Like the index and routing checks, a count inside a fence or an HTML comment is not
+# something a reader sees, so it is not held against the index.
+def test_a_count_inside_a_fence_or_comment_is_not_read(tmp_path):
+    readme = "Two skills.\n\n<!-- Three skills -->\n\n```\nThree skills\n```\n"
+    assert codes(with_readme(tmp_path, readme)) == set()
+
+
+# The count uses the same notion of "listed" as the registration check: an index entry
+# in another list style still counts, and an entry repeated is counted once.
+def test_the_count_follows_what_the_index_registers(tmp_path):
+    index = ("# Skills\n* `skills/demo-0/SKILL.md`\n  - `skills/demo-1/SKILL.md`\n"
+             "- `skills/demo-1/SKILL.md` — again\n")
+    root = build(tmp_path, {"demo-0": VALID_SKILL, "demo-1": VALID_SKILL}, index=index)
+    (root / "README.md").write_text("Two skills.\n", encoding="utf-8")
+    assert codes(root) == set()
