@@ -18,7 +18,8 @@ and [references](references/) — laid out as a working second brain.
 | **Grounds before answering** | Reads Microsoft Learn through MCP and quotes the page, rather than recalling an API that changed last quarter. |
 | **Reads your subscription** | Cost, quota, role assignments, what is actually deployed and what it is costing you. |
 | **Files real requests** | Quota increases, support routing — with the proof written back here. |
-| **Makes changes, on your say-so** | States the exact effect in plain English — *"this removes Bob's Contributor role on the subscription; he'd lose write access"* — and waits for your yes. Never a surprise. |
+| **Does the routine work** | Creates, configures, scales, starts and restarts resources inside the scope you granted, without stopping to ask, and hands back proof of every command it ran. |
+| **Needs your word for the rest** | Granting roles, changing policy, touching your directory and deleting anything run only against your approval for that exact command, with the effect stated in plain English first: *"this removes Bob's Contributor role on the subscription; he'd lose write access."* Anything off the routine list waits for you too. |
 | **Remembers** | Decisions and hard-won gotchas land in this repo, so the next conversation starts where the last one ended. |
 
 Fifteen skills, from `quota-diagnose` to `hipaa-baa` to `cost-check`. Browse
