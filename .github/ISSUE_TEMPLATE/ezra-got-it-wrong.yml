@@ -40,5 +40,5 @@ body:
     id: where
     attributes:
       label: Which Ezra?
-      description: m8t.run, or your own deployment — and roughly when.
-      placeholder: m8t.run, this morning
+      description: wazari.ai/ezra, or your own deployment — and roughly when.
+      placeholder: wazari.ai/ezra, this morning

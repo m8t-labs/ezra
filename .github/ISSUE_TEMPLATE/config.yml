@@ -13,8 +13,8 @@ contact_links:
     about: Discussions on the canonical Ezra repository — questions, half-formed ideas, anything not yet a proposal.
 
   - name: Running Ezra, installing it, or the platform underneath
-    url: https://m8t.run
-    about: This repository is Ezra's knowledge. Questions about deploying or operating it start at m8t.run.
+    url: https://wazari.ai/ezra
+    about: This repository is Ezra's knowledge. Questions about deploying or operating it start at wazari.ai/ezra.
 
   - name: Report a bug in the platform, the CLI, or the install
     url: https://github.com/m8t-labs/m8t-releases/issues
