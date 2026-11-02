@@ -28,7 +28,7 @@ pull request.
 
 ## Running Ezra
 
-Ezra runs on [m8t](https://m8t.run), which deploys into **your own Azure
+Ezra runs on [m8t](https://wazari.ai/ezra/about#access-trust), which deploys into **your own Azure
 subscription** — your tenant, your data, your bill, no middleman holding your credentials.
 
 ### Install page — one sign-in, about twenty minutes

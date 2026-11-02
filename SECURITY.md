@@ -32,7 +32,7 @@ novel rephrasing is not by itself a finding; a way to smuggle a *secret* or a re
 details past the sweep is.
 
 Ezra runs on the m8t platform, which deploys into its operator's own Azure subscription.
-Vulnerabilities in that platform, in a deployed gateway, or in [m8t.run](https://m8t.run)
+Vulnerabilities in that platform, in a deployed gateway, or in [wazari.ai/ezra](https://wazari.ai/ezra)
 are also welcome at <security@m8t.run> — same address, and we will route them.
 
 ## How the checks run

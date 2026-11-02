@@ -82,7 +82,7 @@ There is no changelog file — releases are described in
 
 ## Where Ezra's own learning goes
 
-The Ezra hosted at [m8t.run](https://m8t.run) is designed to learn from the questions people
+The Ezra hosted at [wazari.ai/ezra](https://wazari.ai/ezra) is designed to learn from the questions people
 ask it and to commit what it learns to a separate branch of this repository — never
 straight to `main`. Maintainers then curate that branch and open a pull request to promote
 what belongs in the seed everyone else forks. That loop is not switched on yet;

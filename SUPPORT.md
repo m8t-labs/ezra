@@ -6,7 +6,7 @@ Five destinations, depending on what you need.
 |---|---|
 | Propose a skill, fix Ezra's knowledge, or report an answer Ezra got wrong | [Issues on the Ezra project](https://github.com/m8t-labs/ezra/issues) |
 | Ask a question, or talk through an idea before writing it up | [Discussions on the Ezra project](https://github.com/m8t-labs/ezra/discussions) |
-| Run Ezra, install it, or ask about the platform underneath it | [m8t.run](https://m8t.run) |
+| Run Ezra, install it, or ask about the platform underneath it | [wazari.ai/ezra](https://wazari.ai/ezra) |
 | Report a bug in the platform, the CLI, or the install itself | [Issues on the m8t releases project](https://github.com/m8t-labs/m8t-releases/issues) |
 | Report a security issue or a leaked secret | [Report privately](https://github.com/m8t-labs/ezra/security/advisories/new), or <security@m8t.run> — see [SECURITY.md](SECURITY.md) |
 
